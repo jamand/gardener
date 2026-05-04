@@ -390,6 +390,11 @@ func run(ctx context.Context, opts *Options) error {
 			}).RetryUntilTimeout(time.Second, 5*time.Minute),
 			Dependencies: flow.NewTaskIDs(waitUntilControlPlaneDeploymentsReady),
 		})
+		_ = g.Add(flow.Task{
+			Name:         "Publishing cluster-info ConfigMap for discovery-token join flow",
+			Fn:           b.PublishClusterInfo,
+			Dependencies: flow.NewTaskIDs(waitUntilKubeControllerManagerIsActive),
+		})
 		// During the migration from the bootstrap etcds to the druid-managed etcds, components serving webhooks might be
 		// crash-looping while retrying to connect to the API server. Therefore, we explicitly wait for them to be healthy
 		// again before deploying other components.
