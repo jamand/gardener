@@ -113,9 +113,15 @@ func run(ctx context.Context, opts *Options) error {
 		fmt.Fprintln(opts.Out, bootstraptoken.FromSecretData(secret.Data))
 	}
 
+	fmt.Fprintf(opts.ErrOut, "Note: this bootstrap token is valid for %s.\n", opts.Validity)
+
 	return nil
 }
 
+// TODO: emit --discovery-token-ca-cert-hash instead of inlining --ca-certificate
+// once hash-based CA discovery is wired up in `gardenadm join` (see
+// resolveCertificateAuthority in pkg/gardenadm/cmd/join/join.go and
+// PublishClusterInfo in pkg/gardenadm/botanist/clusterinfo.go).
 func printJoinCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) string {
 	return fmt.Sprintf(`gardenadm join --bootstrap-token %s --ca-certificate "%s" %s
 `,

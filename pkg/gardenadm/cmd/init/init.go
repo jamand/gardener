@@ -462,9 +462,12 @@ To start using your cluster, you need to run the following as a regular user:
   mkdir -p $HOME/.kube
   sudo cp -i %s $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You can now verify that the cluster is healthy:
+
   kubectl get nodes
 
-You can now join any number of control-plane or worker nodes. A bootstrap token
+You can join any number of control-plane or worker nodes. A bootstrap token
 is required to authenticate a new machine when joining the cluster. To create
 such a token, run this on a control-plane node:
 
@@ -482,10 +485,9 @@ self-hosted shoot cluster:
   gardenadm token create --print-connect-command --shoot-namespace=%s --shoot-name=%s
 
 Copy the output and run it on a control plane node in order to deploy the
-gardenlet for connectivity to Gardener.
-
-Please use the shoots/adminkubeconfig subresource to retrieve a kubeconfig,
-see https://gardener.cloud/docs/gardener/shoot/shoot_access/.
+gardenlet for connectivity to Gardener. From that point on, retrieve a
+kubeconfig via the shoots/adminkubeconfig subresource (see
+https://gardener.cloud/docs/gardener/shoot/shoot_access/).
 `, botanist.PathKubeconfig, b.Shoot.GetInfo().Namespace, b.Shoot.GetInfo().Name)
 
 	return nil
