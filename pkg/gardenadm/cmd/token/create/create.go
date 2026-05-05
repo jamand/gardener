@@ -7,12 +7,14 @@ package create
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/cert"
 	bootstraptokenutil "k8s.io/cluster-bootstrap/token/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,6 +22,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	tokenutils "github.com/gardener/gardener/pkg/gardenadm/cmd/token/utils"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/kubernetes/bootstraptoken"
@@ -104,7 +107,11 @@ func run(ctx context.Context, opts *Options) error {
 
 	switch {
 	case opts.PrintJoinCommand:
-		fmt.Fprint(opts.Out, printJoinCommand(clientSet, secret))
+		joinCmd, err := printJoinCommand(clientSet, secret)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(opts.Out, joinCmd)
 
 	case opts.PrintConnectCommand:
 		fmt.Fprint(opts.Out, printConnectCommand(clientSet, secret))
@@ -118,17 +125,23 @@ func run(ctx context.Context, opts *Options) error {
 	return nil
 }
 
-// TODO: emit --discovery-token-ca-cert-hash instead of inlining --ca-certificate
-// once hash-based CA discovery is wired up in `gardenadm join` (see
-// resolveCertificateAuthority in pkg/gardenadm/cmd/join/join.go and
-// PublishClusterInfo in pkg/gardenadm/botanist/clusterinfo.go).
-func printJoinCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) string {
-	return fmt.Sprintf(`gardenadm join --bootstrap-token %s --ca-certificate "%s" %s
-`,
+func printJoinCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) (string, error) {
+	certs, err := cert.ParseCertsPEM(clientSet.RESTConfig().CAData)
+	if err != nil {
+		return "", fmt.Errorf("failed parsing CA certificates: %w", err)
+	}
+
+	var hashFlags strings.Builder
+	for _, c := range certs {
+		hashFlags.WriteString(" --discovery-token-ca-cert-hash ")
+		hashFlags.WriteString(discovery.Hash(c))
+	}
+
+	return fmt.Sprintf("gardenadm join --bootstrap-token %s%s %s\n",
 		bootstraptoken.FromSecretData(bootstrapTokenSecret.Data),
-		utils.EncodeBase64(clientSet.RESTConfig().CAData),
+		hashFlags.String(),
 		clientSet.RESTConfig().Host,
-	)
+	), nil
 }
 
 func printConnectCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) string {

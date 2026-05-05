@@ -83,8 +83,8 @@ func (b *GardenadmBotanist) PublishClusterInfo(ctx context.Context) error {
 		}
 		rb.Subjects = []rbacv1.Subject{{
 			APIGroup: rbacv1.GroupName,
-			Kind:     rbacv1.UserKind,
-			Name:     "system:anonymous",
+			Kind:     rbacv1.GroupKind,
+			Name:     "system:unauthenticated",
 		}}
 		return nil
 	}); err != nil {

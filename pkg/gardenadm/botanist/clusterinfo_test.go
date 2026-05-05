@@ -115,7 +115,7 @@ users:
 				Expect(cfg.CurrentContext).To(BeEmpty())
 			})
 
-			It("should grant system:anonymous get on cluster-info via Role + RoleBinding", func() {
+			It("should grant system:unauthenticated get on cluster-info via Role + RoleBinding", func() {
 				Expect(b.PublishClusterInfo(ctx)).To(Succeed())
 
 				role := &rbacv1.Role{}
@@ -137,7 +137,7 @@ users:
 				Expect(rb.Subjects).To(ConsistOf(rbacv1.Subject{
 					APIGroup: rbacv1.GroupName,
 					Kind:     rbacv1.UserKind,
-					Name:     "system:anonymous",
+					Name:     "system:unauthenticated",
 				}))
 			})
 

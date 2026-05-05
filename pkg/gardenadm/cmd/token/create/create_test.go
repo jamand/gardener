@@ -6,6 +6,14 @@ package create_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
+	"time"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,8 +33,10 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	fakekubernetes "github.com/gardener/gardener/pkg/client/kubernetes/fake"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	. "github.com/gardener/gardener/pkg/gardenadm/cmd/token/create"
 	tokenutils "github.com/gardener/gardener/pkg/gardenadm/cmd/token/utils"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/test"
 	clitest "github.com/gardener/gardener/pkg/utils/test/cli"
 )
@@ -41,7 +51,10 @@ var _ = Describe("Create", func() {
 
 		fakeClient client.Client
 		clientSet  kubernetes.Interface
-		restConfig = &rest.Config{Host: "some-host", TLSClientConfig: rest.TLSClientConfig{CAData: []byte("ca-data")}}
+
+		caCert   *x509.Certificate
+		caPEM    []byte
+		caHash   string
 
 		tokenID     = "abcdef"
 		tokenSecret = "1234567890abcdef"
@@ -53,6 +66,11 @@ var _ = Describe("Create", func() {
 		globalOpts.IOStreams, _, stdOut, _ = clitest.NewTestIOStreams()
 		command = NewCommand(globalOpts)
 
+		caCert = generateTestCert()
+		caPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})
+		caHash = discovery.Hash(caCert)
+
+		restConfig := &rest.Config{Host: "some-host", TLSClientConfig: rest.TLSClientConfig{CAData: caPEM}}
 		fakeClient = fakeclient.NewClientBuilder().Build()
 		clientSet = fakekubernetes.NewClientSetBuilder().WithClient(fakeClient).WithRESTConfig(restConfig).Build()
 
@@ -109,8 +127,7 @@ var _ = Describe("Create", func() {
 				Expect(fakeClient.Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: v1beta1constants.ConfigMapNameShootInfo, Namespace: metav1.NamespaceSystem}})).To(Succeed())
 
 				Expect(command.RunE(command, []string{token})).To(Succeed())
-				Eventually(stdOut).Should(Say(`gardenadm join --bootstrap-token abcdef.1234567890abcdef --ca-certificate "Y2EtZGF0YQ==" some-host
-`))
+				Eventually(stdOut).Should(Say("gardenadm join --bootstrap-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash " + caHash + " some-host\n"))
 			})
 		})
 
@@ -129,13 +146,39 @@ var _ = Describe("Create", func() {
 				restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gardencorev1beta1.SchemeGroupVersion})
 				restMapper.Add(gardencorev1beta1.SchemeGroupVersion.WithKind("Shoot"), meta.RESTScopeNamespace)
 
+				restConfig := &rest.Config{Host: "some-host", TLSClientConfig: rest.TLSClientConfig{CAData: caPEM}}
 				fakeClient = fakeclient.NewClientBuilder().WithRESTMapper(restMapper).Build()
 				clientSet = fakekubernetes.NewClientSetBuilder().WithClient(fakeClient).WithRESTConfig(restConfig).Build()
 
 				Expect(command.RunE(command, []string{token})).To(Succeed())
-				Eventually(stdOut).Should(Say(`gardenadm connect --bootstrap-token abcdef.1234567890abcdef --ca-certificate "Y2EtZGF0YQ==" some-host
+				Eventually(stdOut).Should(Say(`gardenadm connect --bootstrap-token abcdef.1234567890abcdef --ca-certificate "` + utils.EncodeBase64(caPEM) + `" some-host
 `))
 			})
 		})
 	})
 })
+
+func generateTestCert() *x509.Certificate {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour),
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		panic(err)
+	}
+	return cert
+}
