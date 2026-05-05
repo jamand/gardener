@@ -151,6 +151,10 @@ func NewGardenadmBotanist(
 		return nil, fmt.Errorf("failed initializing shoot resource: %w", err)
 	}
 
+	if runsControlPlane {
+		injectAnonymousAuthConfig(&resources)
+	}
+
 	initializeSeedResource(resources, runsControlPlane)
 
 	gardenClient := newFakeGardenClient()
