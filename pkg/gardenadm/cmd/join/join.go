@@ -31,7 +31,7 @@ import (
 	gardenerextensions "github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/gardenadm/botanist"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
-	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/discovery"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	staticpodtranslator "github.com/gardener/gardener/pkg/gardenadm/staticpod"
 	shootpkg "github.com/gardener/gardener/pkg/gardenlet/operation/shoot"
 	"github.com/gardener/gardener/pkg/nodeagent"

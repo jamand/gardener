@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// Package pubkeypin: SHA-256 SPKI pin compute and verify.
+// SHA-256 SPKI pin compute and verify.
 // Algorithm follows kubeadm (k8s.io/kubernetes/cmd/kubeadm/app/util/pubkeypin); we use the same
 // "sha256:<hex>" format so --discovery-token-ca-cert-hash is interchangeable.
-package pubkeypin
+package discovery
 
 import (
 	"crypto/sha256"
