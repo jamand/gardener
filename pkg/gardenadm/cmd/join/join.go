@@ -31,6 +31,7 @@ import (
 	gardenerextensions "github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/gardenadm/botanist"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/discovery"
 	staticpodtranslator "github.com/gardener/gardener/pkg/gardenadm/staticpod"
 	shootpkg "github.com/gardener/gardener/pkg/gardenlet/operation/shoot"
 	"github.com/gardener/gardener/pkg/nodeagent"
@@ -96,7 +97,12 @@ func run(ctx context.Context, opts *Options) error {
 		return fmt.Errorf("failed creating gardenadm botanist: %w", err)
 	}
 
-	bootstrapClientSet, err := cmd.NewClientSetFromBootstrapToken(opts.ControlPlaneAddress, opts.CertificateAuthority, opts.BootstrapToken, kubernetes.SeedScheme)
+	caBundle, err := resolveCertificateAuthority(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("failed resolving cluster CA bundle: %w", err)
+	}
+
+	bootstrapClientSet, err := cmd.NewClientSetFromBootstrapToken(opts.ControlPlaneAddress, caBundle, opts.BootstrapToken, kubernetes.SeedScheme)
 	if err != nil {
 		return fmt.Errorf("failed creating a new bootstrap client set: %w", err)
 	}
@@ -323,6 +329,14 @@ func GetGardenerNodeAgentSecret(ctx context.Context, opts *Options, b *botanist.
 	}
 
 	return &gardenerNodeAgentSecret, nil
+}
+
+func resolveCertificateAuthority(ctx context.Context, opts *Options) ([]byte, error) {
+	if len(opts.CertificateAuthority) > 0 {
+		return opts.CertificateAuthority, nil
+	}
+
+	return discovery.Discover(ctx, opts.Log, opts.ControlPlaneAddress, opts.BootstrapToken, opts.DiscoveryTokenCACertHash)
 }
 
 func getWorkerPoolName(ctx context.Context, opts *Options, b *botanist.GardenadmBotanist) (string, error) {

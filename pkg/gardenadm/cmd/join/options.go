@@ -23,6 +23,8 @@ type Options struct {
 	BootstrapToken string
 	// CertificateAuthority is the CA bundle of the control plane.
 	CertificateAuthority []byte
+	// DiscoveryTokenCACertHash is mutual-exclusive with CertificateAuthority flag.
+	DiscoveryTokenCACertHash string
 	// WorkerPoolName is the name of the worker pool to use for the join command. If not provided, the node is assigned
 	// to the first worker pool in the Shoot manifest.
 	WorkerPoolName string
@@ -55,6 +57,16 @@ func (o *Options) Validate() error {
 		return fmt.Errorf("cannot provide a worker pool name when joining a control plane node")
 	}
 
+	haveCA := len(o.CertificateAuthority) > 0
+	haveHashes := len(o.DiscoveryTokenCACertHash) > 0
+
+	switch {
+	case haveCA && haveHashes:
+		return fmt.Errorf("--ca-certificate and --discovery-token-ca-cert-hash are mutually exclusive")
+	case !haveCA && !haveHashes:
+		return fmt.Errorf("must provide one of --ca-certificate and --discovery-token-ca-cert-hash")
+	}
+
 	return nil
 }
 
@@ -63,6 +75,7 @@ func (o *Options) Complete() error { return nil }
 
 func (o *Options) addFlags(fs *pflag.FlagSet) {
 	fs.BytesBase64Var(&o.CertificateAuthority, "ca-certificate", nil, "Base64-encoded certificate authority bundle of the control plane")
+	fs.StringVar(&o.DiscoveryTokenCACertHash, "discovery-token-ca-cert-hash", "", "Hash value of the CA Certificate printed on gardenadm token")
 	fs.StringVar(&o.BootstrapToken, "bootstrap-token", "", "Bootstrap token for joining the cluster (create it with 'gardenadm token' on a control plane node)")
 	fs.StringVarP(&o.WorkerPoolName, "worker-pool-name", "w", "", "Name of the worker pool to assign the joining node.")
 	fs.BoolVar(&o.ControlPlane, "control-plane", false, "Create a new control plane instance on this node")
