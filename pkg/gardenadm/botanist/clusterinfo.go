@@ -13,17 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
+	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 
 	kubeapiserver "github.com/gardener/gardener/pkg/component/kubernetes/apiserver"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
 )
 
-const (
-	clusterInfoConfigMapName = "cluster-info"
-	clusterInfoRoleName      = "kubeadm:bootstrap-signer-clusterinfo"
-	clusterInfoKubeconfigKey = "kubeconfig"
-)
+const clusterInfoRoleName = "kubeadm:bootstrap-signer-clusterinfo"
 
 // PublishClusterInfo publishes the kube-public/cluster-info ConfigMap and the
 // anonymous RBAC binding required for kubeadm-style discovery-token join
@@ -45,14 +42,14 @@ func (b *GardenadmBotanist) PublishClusterInfo(ctx context.Context) error {
 	c := b.SeedClientSet.Client()
 
 	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
-		Name:      clusterInfoConfigMapName,
+		Name:      bootstrapapi.ConfigMapClusterInfo,
 		Namespace: metav1.NamespacePublic,
 	}}
 	if _, err := controllerutils.CreateOrGetAndMergePatch(ctx, c, cm, func() error {
 		if cm.Data == nil {
 			cm.Data = map[string]string{}
 		}
-		cm.Data[clusterInfoKubeconfigKey] = string(kubeconfig)
+		cm.Data[bootstrapapi.KubeConfigKey] = string(kubeconfig)
 		return nil
 	}); err != nil {
 		return fmt.Errorf("failed reconciling cluster-info ConfigMap: %w", err)
@@ -66,7 +63,7 @@ func (b *GardenadmBotanist) PublishClusterInfo(ctx context.Context) error {
 		role.Rules = []rbacv1.PolicyRule{{
 			APIGroups:     []string{""},
 			Resources:     []string{"configmaps"},
-			ResourceNames: []string{clusterInfoConfigMapName},
+			ResourceNames: []string{bootstrapapi.ConfigMapClusterInfo},
 			Verbs:         []string{"get"},
 		}}
 		return nil
@@ -95,7 +92,7 @@ func (b *GardenadmBotanist) PublishClusterInfo(ctx context.Context) error {
 	}
 
 	b.Logger.Info("Published cluster-info for discovery-token join",
-		"namespace", metav1.NamespacePublic, "configMap", clusterInfoConfigMapName)
+		"namespace", metav1.NamespacePublic, "configMap", bootstrapapi.ConfigMapClusterInfo)
 	return nil
 }
 
