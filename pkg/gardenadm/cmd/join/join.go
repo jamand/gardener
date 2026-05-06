@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/labstack/gommon/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -105,7 +104,6 @@ func run(ctx context.Context, opts *Options) error {
 
 	bootstrapClientSet, err := cmd.NewClientSetFromBootstrapToken(opts.ControlPlaneAddress, caBundle, opts.BootstrapToken, kubernetes.SeedScheme)
 	if err != nil {
-		log.Info(caBundle)
 		return fmt.Errorf("failed creating a new bootstrap client set: %w", err)
 	}
 	version, err := b.DiscoverKubernetesVersion(bootstrapClientSet)
