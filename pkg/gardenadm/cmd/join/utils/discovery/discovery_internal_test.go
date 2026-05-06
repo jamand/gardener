@@ -17,6 +17,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -71,36 +72,36 @@ var _ = Describe("getClusterInfo", func() {
 		})
 		client := fake.NewSimpleClientset(cm)
 
-		got, err := getClusterInfo(ctx, client, testTokenID)
+		got, err := getClusterInfo(ctx, logr.Discard(), client, testTokenID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(got.Name).To(Equal(bootstrapapi.ConfigMapClusterInfo))
 	})
 
 	It("times out with a fetching error when the ConfigMap doesn't exist", func() {
 		client := fake.NewSimpleClientset() // empty
-		_, err := getClusterInfo(ctx, client, testTokenID)
+		_, err := getClusterInfo(ctx, logr.Discard(), client, testTokenID)
 		Expect(err).To(MatchError(ContainSubstring("fetching cluster-info")))
 	})
 
-	It("times out with an annotation error when the ConfigMap exists but lacks the JWS annotation", func() {
+	It("times out with a JWS-signature error when the ConfigMap exists but lacks the JWS data key", func() {
 		cm := clusterInfo(map[string]string{
 			bootstrapapi.KubeConfigKey: testKubeconfig,
 		})
 		client := fake.NewSimpleClientset(cm)
 
-		_, err := getClusterInfo(ctx, client, testTokenID)
-		Expect(err).To(MatchError(ContainSubstring("no JWS annotation for token id")))
+		_, err := getClusterInfo(ctx, logr.Discard(), client, testTokenID)
+		Expect(err).To(MatchError(ContainSubstring("missing the JWS signature data key for token id")))
 	})
 
-	It("times out with an annotation error when the JWS annotation is for a different token", func() {
+	It("times out with a JWS-signature error when the JWS data key is for a different token", func() {
 		cm := clusterInfo(map[string]string{
 			bootstrapapi.KubeConfigKey:                    testKubeconfig,
 			bootstrapapi.JWSSignatureKeyPrefix + "deadbe": "anything",
 		})
 		client := fake.NewSimpleClientset(cm)
 
-		_, err := getClusterInfo(ctx, client, testTokenID)
-		Expect(err).To(MatchError(ContainSubstring("no JWS annotation for token id \"abcdef\"")))
+		_, err := getClusterInfo(ctx, logr.Discard(), client, testTokenID)
+		Expect(err).To(MatchError(ContainSubstring("missing the JWS signature data key for token id \"abcdef\"")))
 	})
 })
 
@@ -123,10 +124,10 @@ var _ = Describe("verifyClusterInfo", func() {
 		Expect(err).To(MatchError(ContainSubstring("missing the \"kubeconfig\" data key")))
 	})
 
-	It("errors when the JWS annotation is missing", func() {
+	It("errors when the JWS signature data key is missing", func() {
 		cm := clusterInfo(map[string]string{bootstrapapi.KubeConfigKey: testKubeconfig})
 		_, err := verifyClusterInfo(cm, testTokenID, testTokenSecret)
-		Expect(err).To(MatchError(ContainSubstring("missing the JWS annotation")))
+		Expect(err).To(MatchError(ContainSubstring("missing the JWS signature data key")))
 	})
 
 	It("errors when the signature was made for a different secret", func() {
@@ -205,6 +206,24 @@ clusters:
 		kc := buildKubeconfigWithCABase64(base64.StdEncoding.EncodeToString([]byte("not-a-pem")))
 		_, _, err := extractCACerts(kc)
 		Expect(err).To(MatchError(ContainSubstring("PEM")))
+	})
+
+	It("errors when more than one cluster carries CA data (ambiguous pin target)", func() {
+		caB64 := base64.StdEncoding.EncodeToString(caPEM)
+		kc := fmt.Appendf(nil, `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: %s
+    server: https://api-a.example.com
+  name: a
+- cluster:
+    certificate-authority-data: %s
+    server: https://api-b.example.com
+  name: b
+`, caB64, caB64)
+		_, _, err := extractCACerts(kc)
+		Expect(err).To(MatchError(ContainSubstring("expected exactly one cluster with CA data")))
 	})
 })
 

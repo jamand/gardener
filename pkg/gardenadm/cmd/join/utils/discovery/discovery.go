@@ -8,11 +8,11 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/labstack/gommon/log"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -34,7 +34,13 @@ const (
 
 // Discover performs kubeadm-style discovery of the cluster CA. On success it
 // returns the verified CA bundle bytes that the caller can trust for the
-// subsequent join steps.
+// subsequent join steps. The flow follows kubeadm:
+//   - fetch kube-public/cluster-info anonymously over insecure TLS,
+//   - verify the JWS signature on the embedded kubeconfig with the bootstrap
+//     token secret,
+//   - verify the embedded CA against one of the supplied SHA-256 SPKI pins,
+//   - re-fetch over verified TLS and assert the kubeconfig payload is identical
+//     (defence-in-depth against MITM that swaps a JWS-equivalent payload).
 func Discover(ctx context.Context, log logr.Logger, address, token string, caCertHashes []string) ([]byte, error) {
 	bootstrapID, bootstrapSecret, err := parseBootstrapToken(token)
 	if err != nil {
@@ -50,7 +56,7 @@ func Discover(ctx context.Context, log logr.Logger, address, token string, caCer
 	}
 
 	log.Info("Fetching cluster-info ConfigMap (insecure)", "endpoint", address, "tokenID", bootstrapID)
-	cm, err := getClusterInfo(ctx, insecureClient, bootstrapID)
+	cm, err := getClusterInfo(ctx, log, insecureClient, bootstrapID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +74,7 @@ func Discover(ctx context.Context, log logr.Logger, address, token string, caCer
 	if err := VerifyAny(certs, caCertHashes); err != nil {
 		return nil, fmt.Errorf("none of the provided CA cert hashes match the fetched CA: %w", err)
 	}
+	log.Info("CA certificate matches one of the supplied SPKI pins", "endpoint", address)
 
 	secureClient, err := newDiscoveryClient(address, caBundle)
 	if err != nil {
@@ -75,12 +82,11 @@ func Discover(ctx context.Context, log logr.Logger, address, token string, caCer
 	}
 
 	log.Info("Refetching cluster-info ConfigMap (secure)", "endpoint", address, "tokenID", bootstrapID)
-	secureCM, err := getClusterInfo(ctx, secureClient, bootstrapID)
+	secureCM, err := getClusterInfo(ctx, log, secureClient, bootstrapID)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(jamand): Diff?
 	if cm.Data[bootstrapapi.KubeConfigKey] != secureCM.Data[bootstrapapi.KubeConfigKey] {
 		return nil, fmt.Errorf("kubeconfig fetched over verified TLS does not match the insecure response")
 	}
@@ -113,9 +119,10 @@ func newDiscoveryClient(endpoint string, caBundle []byte) (kubernetes.Interface,
 }
 
 // getClusterInfo polls until the kube-public/cluster-info ConfigMap exists and
-// has a JWS annotation for tokenID. Transient errors are absorbed by the
-// retry; the most recent error is surfaced if the context expires.
-func getClusterInfo(ctx context.Context, client kubernetes.Interface, tokenID string) (*corev1.ConfigMap, error) {
+// has a JWS signature data key for tokenID. Transient errors are surfaced as
+// debug logs; the most recent error is wrapped into the returned error if the
+// context expires.
+func getClusterInfo(ctx context.Context, log logr.Logger, client kubernetes.Interface, tokenID string) (*corev1.ConfigMap, error) {
 	var (
 		cm      *corev1.ConfigMap
 		lastErr error
@@ -126,13 +133,13 @@ func getClusterInfo(ctx context.Context, client kubernetes.Interface, tokenID st
 			fetched, err := client.CoreV1().ConfigMaps(metav1.NamespacePublic).
 				Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 			if err != nil {
-				log.Errorf("fetching cluster-info: %s", err.Error())
 				lastErr = fmt.Errorf("fetching cluster-info: %w", err)
+				log.V(1).Info("Cluster-info ConfigMap not yet available, retrying", "error", err.Error())
 				return false, nil
 			}
 			if _, ok := fetched.Data[bootstrapapi.JWSSignatureKeyPrefix+tokenID]; !ok {
-				log.Errorf("no JWS annotation for token id %q yet", tokenID)
-				lastErr = fmt.Errorf("no JWS annotation for token id %q yet", tokenID)
+				lastErr = fmt.Errorf("cluster-info ConfigMap is missing the JWS signature data key for token id %q", tokenID)
+				log.V(1).Info("Cluster-info ConfigMap missing JWS signature for token id, retrying", "tokenID", tokenID)
 				return false, nil
 			}
 			cm = fetched
@@ -140,10 +147,8 @@ func getClusterInfo(ctx context.Context, client kubernetes.Interface, tokenID st
 		})
 	if err != nil {
 		if lastErr != nil {
-			log.Errorf("polling cluster-info: %s", lastErr.Error())
 			return nil, fmt.Errorf("polling cluster-info: %w", lastErr)
 		}
-		log.Errorf("polling cluster-info: %s", err.Error())
 		return nil, fmt.Errorf("polling cluster-info: %w", err)
 	}
 	return cm, nil
@@ -160,7 +165,7 @@ func verifyClusterInfo(cm *corev1.ConfigMap, tokenID, tokenSecret string) ([]byt
 
 	signature, ok := cm.Data[bootstrapapi.JWSSignatureKeyPrefix+tokenID]
 	if !ok {
-		return nil, fmt.Errorf("cluster-info ConfigMap is missing the JWS annotation for token id %q", tokenID)
+		return nil, fmt.Errorf("cluster-info ConfigMap is missing the JWS signature data key for token id %q", tokenID)
 	}
 
 	if !jws.DetachedTokenIsValid(signature, kubeconfig, tokenID, tokenSecret) {
@@ -170,8 +175,9 @@ func verifyClusterInfo(cm *corev1.ConfigMap, tokenID, tokenSecret string) ([]byt
 }
 
 // parseBootstrapToken validates and splits a bootstrap token "id.secret".
-// Validation is constant-time on the secret part to avoid timing side-channels;
-// see k8s.io/cluster-bootstrap/token/util.IsValidBootstrapToken.
+// Format validation is delegated to k8s.io/cluster-bootstrap/token/util; the
+// secret is not compared here — it is consumed by jws.DetachedTokenIsValid in
+// verifyClusterInfo, which performs the cryptographic check.
 func parseBootstrapToken(token string) (id, secret string, err error) {
 	if !bootstraptokenutil.IsValidBootstrapToken(token) {
 		return "", "", fmt.Errorf("invalid bootstrap token format; expected <id>.<secret>")
@@ -182,27 +188,32 @@ func parseBootstrapToken(token string) (id, secret string, err error) {
 
 // extractCACerts loads the kubeconfig from cluster-info and returns the CA
 // bundle (PEM bytes) and its parsed certificates. The cluster-info kubeconfig
-// is single-cluster by construction, so the choice of "first cluster with CA
-// data" is unambiguous in practice.
+// is single-cluster by construction; multiple clusters would make the pin
+// target ambiguous, so this is rejected.
 func extractCACerts(kubeconfig []byte) (caBundle []byte, certs []*x509.Certificate, err error) {
 	apiConfig, err := clientcmd.Load(kubeconfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to load raw kubeconfig: %w", err)
 	}
 
-	for _, cluster := range apiConfig.Clusters {
+	names := make([]string, 0, len(apiConfig.Clusters))
+	for name, cluster := range apiConfig.Clusters {
 		if len(cluster.CertificateAuthorityData) > 0 {
-			caBundle = cluster.CertificateAuthorityData
-			break
+			names = append(names, name)
 		}
 	}
-	if len(caBundle) == 0 {
+	switch len(names) {
+	case 0:
 		return nil, nil, fmt.Errorf("no certificate authority data found in kubeconfig clusters")
+	case 1:
+		caBundle = apiConfig.Clusters[names[0]].CertificateAuthorityData
+	default:
+		sort.Strings(names)
+		return nil, nil, fmt.Errorf("expected exactly one cluster with CA data in cluster-info kubeconfig, got %d: %v", len(names), names)
 	}
 
 	certs, err = cert.ParseCertsPEM(caBundle)
 	if err != nil {
-		log.Info(caBundle)
 		return nil, nil, fmt.Errorf("failed to parse CA certificates from PEM: %w", err)
 	}
 

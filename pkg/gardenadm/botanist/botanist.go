@@ -152,7 +152,9 @@ func NewGardenadmBotanist(
 	}
 
 	if runsControlPlane {
-		injectAnonymousAuthConfig(&resources)
+		if err := injectAnonymousAuthConfig(&resources); err != nil {
+			return nil, fmt.Errorf("failed wiring anonymous-auth discovery configuration: %w", err)
+		}
 	}
 
 	initializeSeedResource(resources, runsControlPlane)

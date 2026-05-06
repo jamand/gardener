@@ -15,8 +15,8 @@ import (
 // returned verbatim. Otherwise the bundle is fetched and verified via the
 // kubeadm-style discovery flow against the provided SHA-256 SPKI hashes.
 //
-// The caller is expected to enforce mutual exclusion of the two inputs at
-// validation time; this helper is permissive (caBundle wins if both are set).
+// Mutual exclusion between caBundle and caCertHashes is enforced upstream by
+// the command's Options.Validate(); this helper assumes that contract holds.
 func ResolveCertificateAuthority(ctx context.Context, log logr.Logger, address, token string, caBundle []byte, caCertHashes []string) ([]byte, error) {
 	if len(caBundle) > 0 {
 		return caBundle, nil

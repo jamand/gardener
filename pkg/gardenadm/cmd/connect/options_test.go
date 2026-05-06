@@ -43,8 +43,15 @@ var _ = Describe("Options", func() {
 		It("should succeed when --discovery-token-ca-cert-hash is provided", func() {
 			options.BootstrapToken = "some-token"
 			options.ConfigDir = "path/to/config/dir"
-			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
+			options.DiscoveryTokenCACertHash = []string{"sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"}
 			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should fail when --discovery-token-ca-cert-hash has invalid format", func() {
+			options.BootstrapToken = "some-token"
+			options.ConfigDir = "path/to/config/dir"
+			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
+			Expect(options.Validate()).To(MatchError(ContainSubstring("invalid --discovery-token-ca-cert-hash")))
 		})
 
 		It("should fail when no bootstrap token is provided", func() {

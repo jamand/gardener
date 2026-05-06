@@ -91,6 +91,11 @@ func Publish(ctx context.Context, c client.Client, kubeconfig []byte) error {
 // publication via Publish: it strips user credentials, contexts, and the
 // current-context from the supplied admin kubeconfig, leaving only the
 // cluster CA bundle and API server endpoint.
+//
+// The result is intentionally not directly usable with `kubectl --kubeconfig`
+// (the caller would need to pass --cluster) — the file is consumed by
+// kubeadm-style discovery, not as a normal kubeconfig. Stripping the context
+// avoids leaking the admin user name into the public ConfigMap.
 func BuildKubeconfigFromAdmin(adminKubeconfig []byte) ([]byte, error) {
 	cfg, err := clientcmd.Load(adminKubeconfig)
 	if err != nil {

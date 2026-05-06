@@ -52,6 +52,35 @@ var _ = Describe("Options", func() {
 
 			Expect(options.Validate()).To(MatchError(ContainSubstring("cannot provide a worker pool name when joining a control plane node")))
 		})
+
+		It("should succeed when --discovery-token-ca-cert-hash is provided", func() {
+			options.BootstrapToken = "some-token"
+			options.WorkerPoolName = "some-pool-name"
+			options.DiscoveryTokenCACertHash = []string{"sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"}
+
+			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should fail when neither --ca-certificate nor --discovery-token-ca-cert-hash is provided", func() {
+			options.BootstrapToken = "some-token"
+			options.WorkerPoolName = "some-pool-name"
+			Expect(options.Validate()).To(MatchError(ContainSubstring("must provide one of --ca-certificate and --discovery-token-ca-cert-hash")))
+		})
+
+		It("should fail when both --ca-certificate and --discovery-token-ca-cert-hash are provided", func() {
+			options.BootstrapToken = "some-token"
+			options.WorkerPoolName = "some-pool-name"
+			options.CertificateAuthority = []byte("ca-bytes")
+			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
+			Expect(options.Validate()).To(MatchError(ContainSubstring("--ca-certificate and --discovery-token-ca-cert-hash are mutually exclusive")))
+		})
+
+		It("should fail when --discovery-token-ca-cert-hash has invalid format", func() {
+			options.BootstrapToken = "some-token"
+			options.WorkerPoolName = "some-pool-name"
+			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
+			Expect(options.Validate()).To(MatchError(ContainSubstring("invalid --discovery-token-ca-cert-hash")))
+		})
 	})
 
 	Describe("#Complete", func() {

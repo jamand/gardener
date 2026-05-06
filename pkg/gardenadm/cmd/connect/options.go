@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 )
 
 // Options contains options for this command.
@@ -21,8 +22,9 @@ type Options struct {
 
 	// ControlPlaneAddress is the address of the Gardener control plane to which the self-hosted shoot should be connected.
 	ControlPlaneAddress string
-	// DiscoveryTokenCACertHashes are the sha256 hashed, hex encoded CAs printed by the init/token commands.
-	// Mutual-exclusive with CertificateAuthority flag.
+	// DiscoveryTokenCACertHash carries one or more SHA-256 SPKI pins of the cluster CA, formatted
+	// as "sha256:<64-hex>", as emitted by `gardenadm token create --print-connect-command`. Multiple
+	// pins are tried in order; any match satisfies discovery. Mutually exclusive with CertificateAuthority.
 	DiscoveryTokenCACertHash []string
 	// BootstrapToken is the bootstrap token to use for connecting the shoot.
 	BootstrapToken string
@@ -67,6 +69,11 @@ func (o *Options) Validate() error {
 	case !haveCA && !haveHashes:
 		return fmt.Errorf("must provide one of --ca-certificate and --discovery-token-ca-cert-hash")
 	}
+	for _, pin := range o.DiscoveryTokenCACertHash {
+		if err := discovery.ValidatePinFormat(pin); err != nil {
+			return fmt.Errorf("invalid --discovery-token-ca-cert-hash: %w", err)
+		}
+	}
 
 	return o.ManifestOptions.Validate()
 }
@@ -77,7 +84,7 @@ func (o *Options) Complete() error { return o.ManifestOptions.Complete() }
 func (o *Options) addFlags(fs *pflag.FlagSet) {
 	o.ManifestOptions.AddFlags(fs)
 	fs.BytesBase64Var(&o.CertificateAuthority, "ca-certificate", nil, "Base64-encoded certificate authority bundle of the Gardener control plane")
-	fs.StringSliceVar(&o.DiscoveryTokenCACertHash, "discovery-token-ca-cert-hash", nil, "Hash values of the CA Certificate printed on gardenadm token")
+	fs.StringSliceVar(&o.DiscoveryTokenCACertHash, "discovery-token-ca-cert-hash", nil, "SHA-256 SPKI pin of the Gardener API server CA in the form 'sha256:<64-hex>', as emitted by 'gardenadm token create --print-connect-command'. May be repeated.")
 	fs.StringVar(&o.BootstrapToken, "bootstrap-token", "", "Bootstrap token for connecting the self-hosted shoot cluster to a garden cluster (create it with 'gardenadm token' in the garden cluster)")
 	fs.BoolVar(&o.Force, "force", false, "Forces the deployment of gardenlet, even if it already exists")
 }
