@@ -148,6 +148,27 @@ var _ = Describe("gardenadm unmanaged infrastructure scenario tests", Label("gar
 				}).Should(Equal(configDirectory))
 			}, SpecTimeout(time.Minute))
 
+			It("should reject a join when the discovery-token-ca-cert-hash does not match the cluster CA", func(ctx SpecContext) {
+				stdOut, _, err := execute(ctx, 0, "gardenadm", "token", "create", "--print-join-command")
+				Expect(err).NotTo(HaveOccurred())
+				joinCommand := strings.Split(strings.ReplaceAll(string(stdOut.Contents()), `"`, ``), " ")
+
+				badHash := "sha256:" + strings.Repeat("0", 64)
+				replaced := false
+				for i := 0; i < len(joinCommand)-1; i++ {
+					if joinCommand[i] == "--discovery-token-ca-cert-hash" {
+						joinCommand[i+1] = badHash
+						replaced = true
+						break
+					}
+				}
+				Expect(replaced).To(BeTrue(), "expected --print-join-command to emit --discovery-token-ca-cert-hash")
+
+				_, stdErr, err := execute(ctx, 2, append(joinCommand, "--log-level=debug")...)
+				Expect(err).To(HaveOccurred())
+				Expect(stdErr).To(gbytes.Say("none of the provided CA cert hashes match"))
+			}, SpecTimeout(time.Minute))
+
 			It("should generate a bootstrap token and join the worker node", func(ctx SpecContext) {
 				stdOut, _, err := execute(ctx, 0, "gardenadm", "token", "create", "--print-join-command")
 				Expect(err).NotTo(HaveOccurred())
