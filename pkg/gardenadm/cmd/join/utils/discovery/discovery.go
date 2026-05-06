@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/labstack/gommon/log"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -84,7 +85,7 @@ func Discover(ctx context.Context, log logr.Logger, address, token string, caCer
 		return nil, fmt.Errorf("kubeconfig fetched over verified TLS does not match the insecure response")
 	}
 
-	return insecureKubeconfig, nil
+	return caBundle, nil
 }
 
 // newDiscoveryClient builds a clientset for the cluster-info ConfigMap fetch.
@@ -125,10 +126,12 @@ func getClusterInfo(ctx context.Context, client kubernetes.Interface, tokenID st
 			fetched, err := client.CoreV1().ConfigMaps(metav1.NamespacePublic).
 				Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 			if err != nil {
+				log.Errorf("fetching cluster-info: %s", err.Error())
 				lastErr = fmt.Errorf("fetching cluster-info: %w", err)
 				return false, nil
 			}
 			if _, ok := fetched.Data[bootstrapapi.JWSSignatureKeyPrefix+tokenID]; !ok {
+				log.Errorf("no JWS annotation for token id %q yet", tokenID)
 				lastErr = fmt.Errorf("no JWS annotation for token id %q yet", tokenID)
 				return false, nil
 			}
@@ -137,8 +140,10 @@ func getClusterInfo(ctx context.Context, client kubernetes.Interface, tokenID st
 		})
 	if err != nil {
 		if lastErr != nil {
+			log.Errorf("polling cluster-info: %s", lastErr.Error())
 			return nil, fmt.Errorf("polling cluster-info: %w", lastErr)
 		}
+		log.Errorf("polling cluster-info: %s", err.Error())
 		return nil, fmt.Errorf("polling cluster-info: %w", err)
 	}
 	return cm, nil
@@ -197,7 +202,9 @@ func extractCACerts(kubeconfig []byte) (caBundle []byte, certs []*x509.Certifica
 
 	certs, err = cert.ParseCertsPEM(caBundle)
 	if err != nil {
+		log.Info(caBundle)
 		return nil, nil, fmt.Errorf("failed to parse CA certificates from PEM: %w", err)
 	}
+
 	return caBundle, certs, nil
 }
