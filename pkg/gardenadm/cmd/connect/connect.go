@@ -33,6 +33,7 @@ import (
 	"github.com/gardener/gardener/pkg/controller/gardenletdeployer"
 	"github.com/gardener/gardener/pkg/gardenadm/botanist"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
+	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/gardener/gardener/pkg/utils/kubernetes/health"
 	"github.com/gardener/gardener/pkg/utils/oci"
@@ -88,7 +89,12 @@ func run(ctx context.Context, opts *Options) error {
 	if alreadyConnected, err := isGardenletDeployed(ctx, b); err != nil {
 		return fmt.Errorf("failed checking if gardenlet is already deployed: %w", err)
 	} else if !alreadyConnected || opts.Force {
-		bootstrapClientSet, err := cmd.NewClientSetFromBootstrapToken(opts.ControlPlaneAddress, opts.CertificateAuthority, opts.BootstrapToken, kubernetes.GardenScheme)
+		caBundle, err := discovery.ResolveCertificateAuthority(ctx, opts.Log, opts.ControlPlaneAddress, opts.BootstrapToken, opts.CertificateAuthority, opts.DiscoveryTokenCACertHash)
+		if err != nil {
+			return fmt.Errorf("failed resolving cluster CA bundle: %w", err)
+		}
+
+		bootstrapClientSet, err := cmd.NewClientSetFromBootstrapToken(opts.ControlPlaneAddress, caBundle, opts.BootstrapToken, kubernetes.GardenScheme)
 		if err != nil {
 			return fmt.Errorf("failed creating a new bootstrap garden client set: %w", err)
 		}

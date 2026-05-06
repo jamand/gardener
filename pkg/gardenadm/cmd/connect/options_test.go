@@ -33,9 +33,17 @@ var _ = Describe("Options", func() {
 	})
 
 	Describe("#Validate", func() {
-		It("should succeed when proper values were provided", func() {
+		It("should succeed when --ca-certificate is provided", func() {
 			options.BootstrapToken = "some-token"
 			options.ConfigDir = "path/to/config/dir"
+			options.CertificateAuthority = []byte("ca-bytes")
+			Expect(options.Validate()).To(Succeed())
+		})
+
+		It("should succeed when --discovery-token-ca-cert-hash is provided", func() {
+			options.BootstrapToken = "some-token"
+			options.ConfigDir = "path/to/config/dir"
+			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
 			Expect(options.Validate()).To(Succeed())
 		})
 
@@ -46,6 +54,20 @@ var _ = Describe("Options", func() {
 		It("should fail when it cannot read the default config dir location file", func() {
 			options.BootstrapToken = "some-token"
 			Expect(options.Validate()).To(MatchError(ContainSubstring("error reading config dir location file")))
+		})
+
+		It("should fail when neither --ca-certificate nor --discovery-token-ca-cert-hash is provided", func() {
+			options.BootstrapToken = "some-token"
+			options.ConfigDir = "path/to/config/dir"
+			Expect(options.Validate()).To(MatchError(ContainSubstring("must provide one of --ca-certificate and --discovery-token-ca-cert-hash")))
+		})
+
+		It("should fail when both --ca-certificate and --discovery-token-ca-cert-hash are provided", func() {
+			options.BootstrapToken = "some-token"
+			options.ConfigDir = "path/to/config/dir"
+			options.CertificateAuthority = []byte("ca-bytes")
+			options.DiscoveryTokenCACertHash = []string{"sha256:abc"}
+			Expect(options.Validate()).To(MatchError(ContainSubstring("--ca-certificate and --discovery-token-ca-cert-hash are mutually exclusive")))
 		})
 	})
 

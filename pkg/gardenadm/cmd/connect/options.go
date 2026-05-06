@@ -21,6 +21,9 @@ type Options struct {
 
 	// ControlPlaneAddress is the address of the Gardener control plane to which the self-hosted shoot should be connected.
 	ControlPlaneAddress string
+	// DiscoveryTokenCACertHashes are the sha256 hashed, hex encoded CAs printed by the init/token commands.
+	// Mutual-exclusive with CertificateAuthority flag.
+	DiscoveryTokenCACertHash []string
 	// BootstrapToken is the bootstrap token to use for connecting the shoot.
 	BootstrapToken string
 	// CertificateAuthority is the CA bundle of the control plane.
@@ -55,6 +58,16 @@ func (o *Options) Validate() error {
 		o.ConfigDir = string(data)
 	}
 
+	haveCA := len(o.CertificateAuthority) > 0
+	haveHashes := len(o.DiscoveryTokenCACertHash) > 0
+
+	switch {
+	case haveCA && haveHashes:
+		return fmt.Errorf("--ca-certificate and --discovery-token-ca-cert-hash are mutually exclusive")
+	case !haveCA && !haveHashes:
+		return fmt.Errorf("must provide one of --ca-certificate and --discovery-token-ca-cert-hash")
+	}
+
 	return o.ManifestOptions.Validate()
 }
 
@@ -64,6 +77,7 @@ func (o *Options) Complete() error { return o.ManifestOptions.Complete() }
 func (o *Options) addFlags(fs *pflag.FlagSet) {
 	o.ManifestOptions.AddFlags(fs)
 	fs.BytesBase64Var(&o.CertificateAuthority, "ca-certificate", nil, "Base64-encoded certificate authority bundle of the Gardener control plane")
+	fs.StringSliceVar(&o.DiscoveryTokenCACertHash, "discovery-token-ca-cert-hash", nil, "Hash values of the CA Certificate printed on gardenadm token")
 	fs.StringVar(&o.BootstrapToken, "bootstrap-token", "", "Bootstrap token for connecting the self-hosted shoot cluster to a garden cluster (create it with 'gardenadm token' in the garden cluster)")
 	fs.BoolVar(&o.Force, "force", false, "Forces the deployment of gardenlet, even if it already exists")
 }

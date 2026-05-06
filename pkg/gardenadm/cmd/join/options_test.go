@@ -36,6 +36,7 @@ var _ = Describe("Options", func() {
 		It("should succeed when proper values were provided", func() {
 			options.BootstrapToken = "some-token"
 			options.WorkerPoolName = "some-pool-name"
+			options.CertificateAuthority = []byte("ca-bytes")
 
 			Expect(options.Validate()).To(Succeed())
 		})

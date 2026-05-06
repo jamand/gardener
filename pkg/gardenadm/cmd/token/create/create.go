@@ -24,7 +24,6 @@ import (
 	"github.com/gardener/gardener/pkg/gardenadm/cmd"
 	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	tokenutils "github.com/gardener/gardener/pkg/gardenadm/cmd/token/utils"
-	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/kubernetes/bootstraptoken"
 )
 
@@ -114,7 +113,11 @@ func run(ctx context.Context, opts *Options) error {
 		fmt.Fprint(opts.Out, joinCmd)
 
 	case opts.PrintConnectCommand:
-		fmt.Fprint(opts.Out, printConnectCommand(clientSet, secret))
+		connectCmd, err := printConnectCommand(clientSet, secret)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(opts.Out, connectCmd)
 
 	default:
 		fmt.Fprintln(opts.Out, bootstraptoken.FromSecretData(secret.Data))
@@ -124,6 +127,19 @@ func run(ctx context.Context, opts *Options) error {
 }
 
 func printJoinCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) (string, error) {
+	return printBootstrapCommand("join", clientSet, bootstrapTokenSecret)
+}
+
+func printConnectCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) (string, error) {
+	return printBootstrapCommand("connect", clientSet, bootstrapTokenSecret)
+}
+
+// printBootstrapCommand renders a `gardenadm <verb>` command line that uses
+// kubeadm-style discovery: the cluster CA is pinned via SHA-256 SPKI hash
+// rather than the full PEM bundle. The hash is computed over each cert in
+// clientSet.RESTConfig().CAData; multiple --discovery-token-ca-cert-hash flags
+// are emitted when the bundle contains a chain.
+func printBootstrapCommand(verb string, clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) (string, error) {
 	certs, err := cert.ParseCertsPEM(clientSet.RESTConfig().CAData)
 	if err != nil {
 		return "", fmt.Errorf("failed parsing CA certificates: %w", err)
@@ -135,20 +151,12 @@ func printJoinCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *core
 		hashFlags.WriteString(discovery.Hash(c))
 	}
 
-	return fmt.Sprintf("gardenadm join --bootstrap-token %s%s %s\n",
+	return fmt.Sprintf("gardenadm %s --bootstrap-token %s%s %s\n",
+		verb,
 		bootstraptoken.FromSecretData(bootstrapTokenSecret.Data),
 		hashFlags.String(),
 		clientSet.RESTConfig().Host,
 	), nil
-}
-
-func printConnectCommand(clientSet kubernetes.Interface, bootstrapTokenSecret *corev1.Secret) string {
-	return fmt.Sprintf(`gardenadm connect --bootstrap-token %s --ca-certificate "%s" %s
-`,
-		bootstraptoken.FromSecretData(bootstrapTokenSecret.Data),
-		utils.EncodeBase64(clientSet.RESTConfig().CAData),
-		clientSet.RESTConfig().Host,
-	)
 }
 
 func validateIsShootCluster(ctx context.Context, c client.Client) error {

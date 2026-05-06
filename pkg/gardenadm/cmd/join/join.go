@@ -97,7 +97,7 @@ func run(ctx context.Context, opts *Options) error {
 		return fmt.Errorf("failed creating gardenadm botanist: %w", err)
 	}
 
-	caBundle, err := resolveCertificateAuthority(ctx, opts)
+	caBundle, err := discovery.ResolveCertificateAuthority(ctx, opts.Log, opts.ControlPlaneAddress, opts.BootstrapToken, opts.CertificateAuthority, opts.DiscoveryTokenCACertHash)
 	if err != nil {
 		return fmt.Errorf("failed resolving cluster CA bundle: %w", err)
 	}
@@ -329,14 +329,6 @@ func GetGardenerNodeAgentSecret(ctx context.Context, opts *Options, b *botanist.
 	}
 
 	return &gardenerNodeAgentSecret, nil
-}
-
-func resolveCertificateAuthority(ctx context.Context, opts *Options) ([]byte, error) {
-	if len(opts.CertificateAuthority) > 0 {
-		return opts.CertificateAuthority, nil
-	}
-
-	return discovery.Discover(ctx, opts.Log, opts.ControlPlaneAddress, opts.BootstrapToken, opts.DiscoveryTokenCACertHash)
 }
 
 func getWorkerPoolName(ctx context.Context, opts *Options, b *botanist.GardenadmBotanist) (string, error) {

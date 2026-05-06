@@ -36,7 +36,6 @@ import (
 	"github.com/gardener/gardener/pkg/gardenadm/cmd/join/utils/discovery"
 	. "github.com/gardener/gardener/pkg/gardenadm/cmd/token/create"
 	tokenutils "github.com/gardener/gardener/pkg/gardenadm/cmd/token/utils"
-	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/test"
 	clitest "github.com/gardener/gardener/pkg/utils/test/cli"
 )
@@ -151,8 +150,7 @@ var _ = Describe("Create", func() {
 				clientSet = fakekubernetes.NewClientSetBuilder().WithClient(fakeClient).WithRESTConfig(restConfig).Build()
 
 				Expect(command.RunE(command, []string{token})).To(Succeed())
-				Eventually(stdOut).Should(Say(`gardenadm connect --bootstrap-token abcdef.1234567890abcdef --ca-certificate "` + utils.EncodeBase64(caPEM) + `" some-host
-`))
+				Eventually(stdOut).Should(Say("gardenadm connect --bootstrap-token abcdef.1234567890abcdef --discovery-token-ca-cert-hash " + caHash + " some-host\n"))
 			})
 		})
 	})
