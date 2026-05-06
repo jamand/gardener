@@ -76,6 +76,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/gardener/secretsrotation"
 	"github.com/gardener/gardener/pkg/utils/gardener/tokenrequest"
 	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/gardener/gardener/pkg/utils/kubernetes/clusterinfo"
 	"github.com/gardener/gardener/pkg/utils/retry"
 	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
@@ -428,6 +429,14 @@ func (r *Reconciler) reconcile(
 				return reconcileGardenerInfoConfigMap(ctx, log, virtualClusterClient, secretsManager, workloadIdentityTokenIssuerURL(garden))
 			},
 			Dependencies: flow.NewTaskIDs(waitUntilGardenerAPIServerReady, initializeVirtualClusterClient),
+		})
+		_ = g.Add(flow.Task{
+			Name: "Publishing cluster-info ConfigMap for bootstrap discovery",
+			Fn: func(ctx context.Context) error {
+				return r.publishClusterInfo(ctx, garden, secretsManager, virtualClusterClient)
+			},
+			SkipIf:       garden.Spec.VirtualCluster.Kubernetes.KubeAPIServer == nil || !ptr.Deref(garden.Spec.VirtualCluster.Kubernetes.KubeAPIServer.EnableBootstrapDiscovery, false),
+			Dependencies: flow.NewTaskIDs(initializeVirtualClusterClient),
 		})
 		deployExtensionResources = g.Add(flow.Task{
 			Name:         "Deploying extension resources",
@@ -1439,6 +1448,40 @@ func getDNSProvider(dns operatorv1alpha1.DNSManagement, providerName *string) *o
 		}
 	}
 	return nil
+}
+
+func (r *Reconciler) publishClusterInfo(ctx context.Context, garden *operatorv1alpha1.Garden, secretsManager secretsmanager.Interface, virtualClusterClient client.Client) error {
+	// not sure if this is necessary
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: metav1.NamespacePublic}}
+	if _, err := controllerutils.CreateOrGetAndMergePatch(ctx, virtualClusterClient, ns, func() error { return nil }); err != nil {
+		return fmt.Errorf("failed ensuring %q namespace: %w", metav1.NamespacePublic, err)
+	}
+
+	caSecret, found := secretsManager.Get(v1beta1constants.SecretNameCACluster)
+	if !found {
+		return fmt.Errorf("secret %q not found", v1beta1constants.SecretNameCACluster)
+	}
+
+	domains := toDomainNames(getAPIServerDomains(garden.Spec.VirtualCluster.DNS.Domains))
+
+	adminKubeconfig, err := runtime.Encode(clientcmdlatest.Codec, kubernetesutils.NewKubeconfig(
+		"garden",
+		clientcmdv1.Cluster{
+			Server:                   domains[0],
+			CertificateAuthorityData: caSecret.Data[secretsutils.DataKeyCertificateBundle],
+		},
+		clientcmdv1.AuthInfo{},
+	))
+	if err != nil {
+		return fmt.Errorf("failed encoding cluster-info kubeconfig: %w", err)
+	}
+
+	kubeconfig, err := clusterinfo.BuildKubeconfigFromAdmin(adminKubeconfig)
+	if err != nil {
+		return fmt.Errorf("failed building cluster-info kubeconfig: %w", err)
+	}
+
+	return clusterinfo.Publish(ctx, virtualClusterClient, kubeconfig)
 }
 
 func reconcileGardenerInfoConfigMap(ctx context.Context, log logr.Logger, virtualGardenClient client.Client, secretsManager secretsmanager.Interface, workloadIdentityIssuerURL string) error {
