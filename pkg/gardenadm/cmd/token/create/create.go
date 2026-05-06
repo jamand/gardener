@@ -120,8 +120,6 @@ func run(ctx context.Context, opts *Options) error {
 		fmt.Fprintln(opts.Out, bootstraptoken.FromSecretData(secret.Data))
 	}
 
-	fmt.Fprintf(opts.ErrOut, "Note: this bootstrap token is valid for %s.\n", opts.Validity)
-
 	return nil
 }
 

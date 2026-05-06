@@ -136,7 +136,7 @@ users:
 				}))
 				Expect(rb.Subjects).To(ConsistOf(rbacv1.Subject{
 					APIGroup: rbacv1.GroupName,
-					Kind:     rbacv1.UserKind,
+					Kind:     rbacv1.GroupKind,
 					Name:     "system:unauthenticated",
 				}))
 			})

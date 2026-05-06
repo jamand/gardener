@@ -239,7 +239,7 @@ func run(ctx context.Context, opts *Options) error {
 		generateGardenerNodeInitConfig = g.Add(flow.Task{
 			Name: "Preparing gardener-node-init configuration",
 			Fn: func(ctx context.Context) error {
-				return b.PrepareGardenerNodeInitConfiguration(ctx, gardenerNodeAgentSecret.Name, opts.ControlPlaneAddress, opts.CertificateAuthority, opts.BootstrapToken)
+				return b.PrepareGardenerNodeInitConfiguration(ctx, gardenerNodeAgentSecret.Name, opts.ControlPlaneAddress, caBundle, opts.BootstrapToken)
 			},
 			SkipIf:       nodeJoinedAlready,
 			Dependencies: flow.NewTaskIDs(syncPointReadyForGardenerNodeInit),
