@@ -66,8 +66,8 @@ var _ = Describe("getClusterInfo", func() {
 
 	It("returns the ConfigMap when both kubeconfig and JWS annotation are present", func() {
 		cm := clusterInfo(map[string]string{
-			bootstrapapi.KubeConfigKey:                          testKubeconfig,
-			bootstrapapi.JWSSignatureKeyPrefix + testTokenID:    mustComputeJWS(testKubeconfig, testTokenID, testTokenSecret),
+			bootstrapapi.KubeConfigKey:                       testKubeconfig,
+			bootstrapapi.JWSSignatureKeyPrefix + testTokenID: mustComputeJWS(testKubeconfig, testTokenID, testTokenSecret),
 		})
 		client := fake.NewSimpleClientset(cm)
 
@@ -94,7 +94,7 @@ var _ = Describe("getClusterInfo", func() {
 
 	It("times out with an annotation error when the JWS annotation is for a different token", func() {
 		cm := clusterInfo(map[string]string{
-			bootstrapapi.KubeConfigKey: testKubeconfig,
+			bootstrapapi.KubeConfigKey:                    testKubeconfig,
 			bootstrapapi.JWSSignatureKeyPrefix + "deadbe": "anything",
 		})
 		client := fake.NewSimpleClientset(cm)
@@ -107,8 +107,8 @@ var _ = Describe("getClusterInfo", func() {
 var _ = Describe("verifyClusterInfo", func() {
 	It("returns kubeconfig bytes on a valid signature", func() {
 		cm := clusterInfo(map[string]string{
-			bootstrapapi.KubeConfigKey:                          testKubeconfig,
-			bootstrapapi.JWSSignatureKeyPrefix + testTokenID:    mustComputeJWS(testKubeconfig, testTokenID, testTokenSecret),
+			bootstrapapi.KubeConfigKey:                       testKubeconfig,
+			bootstrapapi.JWSSignatureKeyPrefix + testTokenID: mustComputeJWS(testKubeconfig, testTokenID, testTokenSecret),
 		})
 		got, err := verifyClusterInfo(cm, testTokenID, testTokenSecret)
 		Expect(err).NotTo(HaveOccurred())
@@ -131,8 +131,8 @@ var _ = Describe("verifyClusterInfo", func() {
 
 	It("errors when the signature was made for a different secret", func() {
 		cm := clusterInfo(map[string]string{
-			bootstrapapi.KubeConfigKey:                          testKubeconfig,
-			bootstrapapi.JWSSignatureKeyPrefix + testTokenID:    mustComputeJWS(testKubeconfig, testTokenID, "ffffffffffffffff"),
+			bootstrapapi.KubeConfigKey:                       testKubeconfig,
+			bootstrapapi.JWSSignatureKeyPrefix + testTokenID: mustComputeJWS(testKubeconfig, testTokenID, "ffffffffffffffff"),
 		})
 		_, err := verifyClusterInfo(cm, testTokenID, testTokenSecret)
 		Expect(err).To(MatchError(ContainSubstring("did not verify")))
@@ -141,8 +141,8 @@ var _ = Describe("verifyClusterInfo", func() {
 	It("errors when the kubeconfig content was tampered after signing", func() {
 		signature := mustComputeJWS(testKubeconfig, testTokenID, testTokenSecret)
 		cm := clusterInfo(map[string]string{
-			bootstrapapi.KubeConfigKey:                          testKubeconfig + "\n# tampered",
-			bootstrapapi.JWSSignatureKeyPrefix + testTokenID:    signature,
+			bootstrapapi.KubeConfigKey:                       testKubeconfig + "\n# tampered",
+			bootstrapapi.JWSSignatureKeyPrefix + testTokenID: signature,
 		})
 		_, err := verifyClusterInfo(cm, testTokenID, testTokenSecret)
 		Expect(err).To(MatchError(ContainSubstring("did not verify")))

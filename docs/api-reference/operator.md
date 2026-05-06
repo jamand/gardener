@@ -2727,6 +2727,18 @@ KubeAPIServerConfig contains configuration settings for the kube-apiserver.
 </tr>
 <tr>
 <td>
+<code>enableBootstrapDiscovery</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableBootstrapDiscovery toggles publication of the kube-public/cluster-info ConfigMap and the<br />corresponding anonymous RBAC binding required for kubeadm-style discovery-token bootstrap (used by<br />`gardenadm connect`). When enabled, anonymous access is permitted only on the path-scoped endpoints<br />required by the discovery flow; full anonymous access remains disabled.<br />Defaults to false.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resourcesToStoreInETCDEvents</code></br>
 <em>
 <a href="#groupresource">GroupResource</a> array

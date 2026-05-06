@@ -1337,6 +1337,11 @@ func (in *KubeAPIServerConfig) DeepCopyInto(out *KubeAPIServerConfig) {
 		*out = new(Authentication)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.EnableBootstrapDiscovery != nil {
+		in, out := &in.EnableBootstrapDiscovery, &out.EnableBootstrapDiscovery
+		*out = new(bool)
+		**out = **in
+	}
 	if in.ResourcesToStoreInETCDEvents != nil {
 		in, out := &in.ResourcesToStoreInETCDEvents, &out.ResourcesToStoreInETCDEvents
 		*out = make([]GroupResource, len(*in))

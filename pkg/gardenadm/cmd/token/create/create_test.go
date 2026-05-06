@@ -52,9 +52,9 @@ var _ = Describe("Create", func() {
 		fakeClient client.Client
 		clientSet  kubernetes.Interface
 
-		caCert   *x509.Certificate
-		caPEM    []byte
-		caHash   string
+		caCert *x509.Certificate
+		caPEM  []byte
+		caHash string
 
 		tokenID     = "abcdef"
 		tokenSecret = "1234567890abcdef"

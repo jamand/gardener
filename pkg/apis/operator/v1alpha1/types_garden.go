@@ -379,6 +379,13 @@ type KubeAPIServerConfig struct {
 	// Authentication contains settings related to authentication.
 	// +optional
 	Authentication *Authentication `json:"authentication,omitempty"`
+	// EnableBootstrapDiscovery toggles publication of the kube-public/cluster-info ConfigMap and the
+	// corresponding anonymous RBAC binding required for kubeadm-style discovery-token bootstrap (used by
+	// `gardenadm connect`). When enabled, anonymous access is permitted only on the path-scoped endpoints
+	// required by the discovery flow; full anonymous access remains disabled.
+	// Defaults to false.
+	// +optional
+	EnableBootstrapDiscovery *bool `json:"enableBootstrapDiscovery,omitempty"`
 	// ResourcesToStoreInETCDEvents contains a list of resources which should be stored in etcd-events instead of
 	// etcd-main. The 'events' resource is always stored in etcd-events. Note that adding or removing resources from
 	// this list will not migrate them automatically from the etcd-main to etcd-events or vice versa.

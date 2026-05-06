@@ -19,6 +19,12 @@ patches:
         - 10.4.0.0/16
       - op: remove
         path: /spec/runtimeCluster/provider/zones
+      # Publish kube-public/cluster-info on the virtual garden so `gardenadm connect`
+      # can verify the CA via --discovery-token-ca-cert-hash without a pre-shared CA bundle.
+      - op: add
+        path: /spec/virtualCluster/kubernetes/kubeAPIServer
+        value:
+          enableBootstrapDiscovery: true
     target:
       group: operator.gardener.cloud
       kind: Garden
