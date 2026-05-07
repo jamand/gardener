@@ -84,11 +84,20 @@ func computeAPIServerAuthenticationConfig(
 
 	configMap := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: objectMeta.Namespace, Name: structuredAuthentication.ConfigMapName}}
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(configMap), configMap); err != nil {
-		// Ignore missing authentication configuration on cluster deletion to prevent failing redeployments of the
-		// API server in case the end-user deleted the configmap before/simultaneously to the deletion.
-		if !apierrors.IsNotFound(err) || objectMeta.DeletionTimestamp == nil {
+		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("retrieving authentication configuration from the ConfigMap %s failed: %w", client.ObjectKeyFromObject(configMap), err)
 		}
+		// ConfigMap not found — create it on-the-fly with the default anonymous-auth discovery config
+		// so that the kube-apiserver can start without requiring a pre-existing ConfigMap.
+		configRaw, err := BuildAnonymousAuthConfig()
+		if err != nil {
+			return nil, err
+		}
+		configMap.Data = map[string]string{kubeapiserver.DataKeyConfigMapAuthenticationConfig: configRaw}
+		if err := cl.Create(ctx, configMap); err != nil && !apierrors.IsAlreadyExists(err) {
+			return nil, fmt.Errorf("creating anonymous-auth ConfigMap %s failed: %w", client.ObjectKeyFromObject(configMap), err)
+		}
+		out = ptr.To(configRaw)
 	} else {
 		configRaw, ok := configMap.Data[kubeapiserver.DataKeyConfigMapAuthenticationConfig]
 		if !ok {
