@@ -1,0 +1,241 @@
+# Runs nginx on two different nodes and continuously tests pod-to-pod connectivity between them, e.g., while switching
+# the networking type (CNI) of a shoot. Each pod's `curl` sidecar discovers all other pods via the headless Service and
+# curls their nginx. Additionally, the sidecar verifies that the NetworkPolicies are enforced, i.e., that it can't
+# connect to anything that is not allowed (peers on another port, the kube-apiserver, and the internet).
+# Follow the results with:
+#   kubectl -n network-test logs -l app=network-test -c curl -f --prefix
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: network-test
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+  namespace: network-test
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-to-dns
+  namespace: network-test
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # CoreDNS listens on port 8053, which is the target port of the kube-dns Service.
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 8053
+    - protocol: TCP
+      port: 8053
+  # node-local-dns runs in the host network.
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    - ipBlock:
+        cidr: ::/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-network-test
+  namespace: network-test
+spec:
+  podSelector:
+    matchLabels:
+      app: network-test
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: network-test
+    ports:
+    - protocol: TCP
+      port: 80
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: network-test
+    ports:
+    - protocol: TCP
+      port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: network-test
+  namespace: network-test
+spec:
+  clusterIP: None
+  # Publish pods regardless of their readiness so that pods with broken networking are tested as well.
+  publishNotReadyAddresses: true
+  selector:
+    app: network-test
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: network-test
+  namespace: network-test
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: network-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-test
+  namespace: network-test
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: network-test
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 100%
+  template:
+    metadata:
+      labels:
+        app: network-test
+    spec:
+      terminationGracePeriodSeconds: 1
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+              matchLabels:
+                app: network-test
+      containers:
+      - name: nginx
+        image: nginx:1.27.4-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Additionally listen on a port that is not allowed by the NetworkPolicies. Peers must not be able to connect
+          # to it.
+          listen="listen 8080;"
+          if [ -f /proc/net/if_inet6 ]; then listen="$listen listen [::]:8080;"; fi
+          echo "server { $listen location / { return 200; } }" > /etc/nginx/conf.d/not-allowed.conf
+          exec /docker-entrypoint.sh nginx -g 'daemon off;'
+        ports:
+        - name: http
+          containerPort: 80
+        - name: not-allowed
+          containerPort: 8080
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+      - name: curl
+        image: curlimages/curl:8.12.1
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IPS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIPs
+        command:
+        - /bin/sh
+        - -c
+        - |
+          service="network-test.${POD_NAMESPACE}.svc.cluster.local"
+
+          # url builds a URL for the given scheme, IP and port.
+          url() {
+            case "$2" in
+              *:*) echo "$1://[$2]:$3/" ;;
+              *) echo "$1://$2:$3/" ;;
+            esac
+          }
+
+          # check_allowed expects an HTTP 200 response from the given URL.
+          check_allowed() {
+            if code="$(curl -gsS -o /dev/null -w '%{http_code}' --max-time 2 "$1" 2>&1)" && [ "$code" = "200" ]; then
+              ok=$((ok+1))
+            else
+              failed=$((failed+1))
+              echo "$(date -Iseconds) node=${NODE_NAME} FAIL $1: ${code}"
+            fi
+          }
+
+          # check_denied expects that no connection can be established to the given URL. curl exits with 7 if the
+          # connection was refused and with 28 if it timed out. Any other result means that a connection was established.
+          check_denied() {
+            curl -gksS -o /dev/null --connect-timeout 2 --max-time 5 "$1" >/dev/null 2>&1
+            rc=$?
+            if [ "$rc" -eq 7 ] || [ "$rc" -eq 28 ]; then
+              denied=$((denied+1))
+            else
+              leaked=$((leaked+1))
+              echo "$(date -Iseconds) node=${NODE_NAME} LEAK $1: connected (curl exit code ${rc})"
+            fi
+          }
+
+          while true; do
+            peers="$(nslookup "$service" 2>/dev/null | awk '/^Name:/ {found=1} found && /^Address/ {print $2}')"
+            ok=0; failed=0; denied=0; leaked=0
+
+            if [ -z "$peers" ]; then
+              echo "$(date -Iseconds) node=${NODE_NAME} WARN no pods found for ${service}"
+            fi
+
+            for ip in $peers; do
+              # skip own pod IPs
+              case ",${POD_IPS}," in *",${ip},"*) continue ;; esac
+
+              check_allowed "$(url http "$ip" 80)"
+              check_denied "$(url http "$ip" 8080)"
+            done
+
+            check_denied "$(url https "$KUBERNETES_SERVICE_HOST" "$KUBERNETES_SERVICE_PORT")"
+            check_denied "$(url http 1.1.1.1 80)"
+
+            echo "$(date -Iseconds) node=${NODE_NAME} ok=${ok} failed=${failed} denied=${denied} leaked=${leaked}"
+            sleep 5
+          done
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
