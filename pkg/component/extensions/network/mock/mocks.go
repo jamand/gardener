@@ -43,6 +43,20 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// DeleteStaleResources mocks base method.
+func (m *MockInterface) DeleteStaleResources(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteStaleResources", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteStaleResources indicates an expected call of DeleteStaleResources.
+func (mr *MockInterfaceMockRecorder) DeleteStaleResources(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStaleResources", reflect.TypeOf((*MockInterface)(nil).DeleteStaleResources), ctx)
+}
+
 // Deploy mocks base method.
 func (m *MockInterface) Deploy(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -164,6 +178,20 @@ func (m *MockInterface) WaitCleanup(ctx context.Context) error {
 func (mr *MockInterfaceMockRecorder) WaitCleanup(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitCleanup", reflect.TypeOf((*MockInterface)(nil).WaitCleanup), ctx)
+}
+
+// WaitCleanupStaleResources mocks base method.
+func (m *MockInterface) WaitCleanupStaleResources(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitCleanupStaleResources", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WaitCleanupStaleResources indicates an expected call of WaitCleanupStaleResources.
+func (mr *MockInterfaceMockRecorder) WaitCleanupStaleResources(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitCleanupStaleResources", reflect.TypeOf((*MockInterface)(nil).WaitCleanupStaleResources), ctx)
 }
 
 // WaitMigrate mocks base method.

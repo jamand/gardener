@@ -585,6 +585,24 @@ func (r *Reconciler) setupShootReconciliationFlow(ctx context.Context, b *botani
 			SkipIf:       b.Shoot.IsWorkerless || !b.Shoot.HibernationEnabled || b.Shoot.IsSelfHosted(),
 			Dependencies: flow.NewTaskIDs(waitUntilWorkerReady),
 		})
+		// Stale Network resources of a previous networking type are deleted once the worker pools have been rolled
+		// and no Machine uses the previous networking type anymore.
+		deleteStaleNetworkResources = g.Add(flow.Task{
+			Name: "Deleting stale shoot network plugin resources",
+			Fn: flow.TaskFn(func(ctx context.Context) error {
+				return b.Shoot.Components.Extensions.Network.DeleteStaleResources(ctx)
+			}).RetryUntilTimeout(defaultInterval, defaultTimeout),
+			SkipIf:       b.Shoot.IsWorkerless,
+			Dependencies: flow.NewTaskIDs(reconcileSystemComponents, waitUntilWorkerReady),
+		})
+		_ = g.Add(flow.Task{
+			Name: "Waiting until stale shoot network plugin resources are deleted",
+			Fn: func(ctx context.Context) error {
+				return b.Shoot.Components.Extensions.Network.WaitCleanupStaleResources(ctx)
+			},
+			SkipIf:       b.Shoot.IsWorkerless || b.Shoot.HibernationEnabled || flowCtx.skipReadiness,
+			Dependencies: flow.NewTaskIDs(deleteStaleNetworkResources),
+		})
 
 		deploySeedLogging = g.Add(flow.Task{
 			Name:         "Deploying shoot logging stack in Seed",
