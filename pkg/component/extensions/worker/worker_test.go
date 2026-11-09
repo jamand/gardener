@@ -164,6 +164,7 @@ var _ = Describe("Worker", func() {
 			Namespace:                    namespace,
 			Type:                         extensionType,
 			Region:                       region,
+			NetworkingType:               "calico",
 			KubernetesVersion:            kubernetesVersion,
 			KubeletConfig:                kubeletConfig,
 			MachineTypes:                 machineTypes,
@@ -296,6 +297,7 @@ var _ = Describe("Worker", func() {
 						"worker.gardener.cloud/gardener-node-agent-secret-name":                     worker1UserDataKeyName,
 						"containerruntime.worker.gardener.cloud/" + worker1CRIContainerRuntime1Type: "true",
 						"networking.gardener.cloud/node-local-dns-enabled":                          "false",
+						"networking.shoot.gardener.cloud/provider":                                  "calico",
 					}),
 					Taints:      worker1Taints,
 					MachineType: worker1MachineType,
@@ -345,6 +347,7 @@ var _ = Describe("Worker", func() {
 						"worker.garden.sapcloud.io/group":                       worker2Name,
 						"worker.gardener.cloud/gardener-node-agent-secret-name": worker2UserDataKeyName,
 						"networking.gardener.cloud/node-local-dns-enabled":      "false",
+						"networking.shoot.gardener.cloud/provider":              "calico",
 					},
 					MachineType: worker2MachineType,
 					MachineImage: extensionsv1alpha1.MachineImage{

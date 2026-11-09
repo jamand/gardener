@@ -165,7 +165,7 @@ func GetShootNameFromOwnerReferences(objectMeta metav1.Object) string {
 }
 
 // NodeLabelsForWorkerPool returns a combined map of all user-specified and gardener-managed node labels.
-func NodeLabelsForWorkerPool(workerPool gardencorev1beta1.Worker, nodeLocalDNSEnabled bool, gardenerNodeAgentSecretName, region string) map[string]string {
+func NodeLabelsForWorkerPool(workerPool gardencorev1beta1.Worker, nodeLocalDNSEnabled bool, networkingType, gardenerNodeAgentSecretName, region string) map[string]string {
 	// copy worker pool labels map
 	labels := utils.MergeStringMaps(workerPool.Labels)
 	if labels == nil {
@@ -175,6 +175,7 @@ func NodeLabelsForWorkerPool(workerPool gardencorev1beta1.Worker, nodeLocalDNSEn
 	labels["kubernetes.io/arch"] = ptr.Deref(workerPool.Machine.Architecture, v1beta1constants.ArchitectureAMD64)
 
 	labels[v1beta1constants.LabelNodeLocalDNS] = strconv.FormatBool(nodeLocalDNSEnabled)
+	labels[v1beta1constants.LabelNetworkingProvider] = networkingType
 
 	if v1beta1helper.SystemComponentsAllowed(&workerPool) {
 		labels[v1beta1constants.LabelWorkerPoolSystemComponents] = "true"

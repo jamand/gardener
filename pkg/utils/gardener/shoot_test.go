@@ -290,8 +290,14 @@ var _ = Describe("Shoot", func() {
 			}
 		})
 
+		It("should add the networking provider label", func() {
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "calico", "osc-key", "")).To(
+				HaveKeyWithValue("networking.shoot.gardener.cloud/provider", "calico"),
+			)
+		})
+
 		It("should maintain the common labels", func() {
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "test")).To(And(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "test")).To(And(
 				HaveKeyWithValue("node.kubernetes.io/role", "node"),
 				HaveKeyWithValue("kubernetes.io/arch", "arm64"),
 				HaveKeyWithValue("networking.gardener.cloud/node-local-dns-enabled", "false"),
@@ -308,7 +314,7 @@ var _ = Describe("Shoot", func() {
 				"test": "foo",
 				"bar":  "baz",
 			}
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).To(And(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).To(And(
 				HaveKeyWithValue("test", "foo"),
 				HaveKeyWithValue("bar", "baz"),
 			))
@@ -316,16 +322,16 @@ var _ = Describe("Shoot", func() {
 
 		It("should not add system components label if they are not allowed", func() {
 			workerPool.SystemComponents.Allow = false
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).NotTo(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).NotTo(
 				HaveKey("worker.gardener.cloud/system-components"),
 			)
 		})
 
 		It("should correctly handle the node-local-dns label", func() {
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).To(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).To(
 				HaveKeyWithValue("networking.gardener.cloud/node-local-dns-enabled", "false"),
 			)
-			Expect(NodeLabelsForWorkerPool(workerPool, true, "osc-key", "")).To(
+			Expect(NodeLabelsForWorkerPool(workerPool, true, "", "osc-key", "")).To(
 				HaveKeyWithValue("networking.gardener.cloud/node-local-dns-enabled", "true"),
 			)
 		})
@@ -342,7 +348,7 @@ var _ = Describe("Shoot", func() {
 					},
 				},
 			}
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).To(And(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).To(And(
 				HaveKeyWithValue("worker.gardener.cloud/cri-name", "containerd"),
 				HaveKeyWithValue("containerruntime.worker.gardener.cloud/gvisor", "true"),
 				HaveKeyWithValue("containerruntime.worker.gardener.cloud/kata", "true"),
@@ -350,13 +356,13 @@ var _ = Describe("Shoot", func() {
 		})
 
 		It("should not add region label if it's an empty string", func() {
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).NotTo(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).NotTo(
 				HaveKey("topology.kubernetes.io/region"),
 			)
 		})
 
 		It("should not add prefer-ipv6 label if workerPool.ControlPlane is nil", func() {
-			Expect(NodeLabelsForWorkerPool(workerPool, false, "osc-key", "")).NotTo(
+			Expect(NodeLabelsForWorkerPool(workerPool, false, "", "osc-key", "")).NotTo(
 				HaveKey("networking.gardener.cloud/prefer-ipv6"),
 			)
 		})

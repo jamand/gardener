@@ -147,6 +147,8 @@ type OriginalValues struct {
 	NodeMonitorGracePeriod metav1.Duration
 	// NodeLocalDNSEnabled indicates whether node local dns is enabled or not.
 	NodeLocalDNSEnabled bool
+	// NetworkingType is the type of the networking plugin (CNI) configured in the Shoot.
+	NetworkingType string
 	// PrimaryIPFamily represents the preferred IP family (IPv4 or IPv6) to be used.
 	PrimaryIPFamily gardencorev1beta1.IPFamily
 	// KubeProxyConfig is the configuration for kube-proxy.
@@ -627,6 +629,7 @@ func (o *operatingSystemConfig) newDeployer(osc *extensionsv1alpha1.OperatingSys
 		openTelemetryCollectorLogShipperEnabled: o.values.OpenTelemetryCollectorLogShipperEnabled,
 		nodeMonitorGracePeriod:                  o.values.NodeMonitorGracePeriod,
 		nodeLocalDNSEnabled:                     o.values.NodeLocalDNSEnabled,
+		networkingType:                          o.values.NetworkingType,
 		primaryIPFamily:                         o.values.PrimaryIPFamily,
 		taints:                                  taints,
 		caRotationLastInitiationTime:            caRotationLastInitiationTime,
@@ -701,6 +704,7 @@ type deployer struct {
 	openTelemetryCollectorIngressHostName       string
 	openTelemetryCollectorLogShipperEnabled     bool
 	nodeLocalDNSEnabled                         bool
+	networkingType                              string
 	nodeMonitorGracePeriod                      metav1.Duration
 	primaryIPFamily                             gardencorev1beta1.IPFamily
 	taints                                      []corev1.Taint
@@ -733,7 +737,7 @@ func (d *deployer) deploy(ctx context.Context, operation string) (extensionsv1al
 		ClusterDomain:                           d.clusterDomain,
 		CRIName:                                 d.criName,
 		Images:                                  d.images,
-		NodeLabels:                              gardenerutils.NodeLabelsForWorkerPool(d.worker, d.nodeLocalDNSEnabled, d.key, ptr.Deref(d.region, "")),
+		NodeLabels:                              gardenerutils.NodeLabelsForWorkerPool(d.worker, d.nodeLocalDNSEnabled, d.networkingType, d.key, ptr.Deref(d.region, "")),
 		NodeMonitorGracePeriod:                  d.nodeMonitorGracePeriod,
 		KubeletCABundle:                         d.kubeletCABundle,
 		KubeletConfigParameters:                 d.kubeletConfigParameters,
