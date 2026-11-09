@@ -7168,7 +7168,7 @@ func schema_pkg_apis_core_v1beta1_Networking(ref common.ReferenceCallback) commo
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type identifies the type of the networking plugin. This field is immutable.",
+							Description: "Type identifies the type of the networking plugin.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

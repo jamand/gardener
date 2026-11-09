@@ -8826,7 +8826,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Type identifies the type of the networking plugin. This field is immutable.</p>
+<p>Type identifies the type of the networking plugin.</p>
 </td>
 </tr>
 <tr>

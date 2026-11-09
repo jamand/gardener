@@ -1654,7 +1654,7 @@ const (
 
 // Networking defines networking parameters for the shoot cluster.
 type Networking struct {
-	// Type identifies the type of the networking plugin. This field is immutable.
+	// Type identifies the type of the networking plugin.
 	// +optional
 	Type *string `json:"type,omitempty" protobuf:"bytes,1,opt,name=type"`
 	// ProviderConfig is the configuration passed to network resource.

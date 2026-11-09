@@ -2568,7 +2568,7 @@ message NamespacedCloudProfileStatus {
 
 // Networking defines networking parameters for the shoot cluster.
 message Networking {
-  // Type identifies the type of the networking plugin. This field is immutable.
+  // Type identifies the type of the networking plugin.
   // +optional
   optional string type = 1;
 

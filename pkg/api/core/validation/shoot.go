@@ -1020,7 +1020,6 @@ func validateNetworkingUpdate(newNetworking, oldNetworking *core.Networking, fld
 		return allErrs
 	}
 
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworking.Type, oldNetworking.Type, fldPath.Child("type"))...)
 	if oldNetworking.Pods != nil {
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworking.Pods, oldNetworking.Pods, fldPath.Child("pods"))...)
 	}

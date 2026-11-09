@@ -5344,18 +5344,6 @@ var _ = Describe("Shoot Validation Tests", func() {
 				}))))
 			})
 
-			It("should forbid changing the networking type", func() {
-				newShoot := prepareShootForUpdate(shoot)
-				newShoot.Spec.Networking.Type = new("some-other-type")
-
-				errorList := ValidateShootUpdate(newShoot, shoot)
-
-				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("spec.networking.type"),
-				}))))
-			})
-
 			It("should allow increasing the networking nodes range", func() {
 				shoot.Spec.Networking.Nodes = new("10.181.0.0/18")
 				newShoot := prepareShootForUpdate(shoot)

@@ -1231,7 +1231,7 @@ const (
 
 // Networking defines networking parameters for the shoot cluster.
 type Networking struct {
-	// Type identifies the type of the networking plugin. This field is immutable.
+	// Type identifies the type of the networking plugin.
 	Type *string
 	// ProviderConfig is the configuration passed to network resource.
 	ProviderConfig *runtime.RawExtension
