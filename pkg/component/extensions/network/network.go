@@ -10,11 +10,9 @@ import (
 	"net"
 	"time"
 
-	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
@@ -47,9 +45,9 @@ type Interface interface {
 	SetServiceCIDRs([]net.IPNet)
 	Get(ctx context.Context) (*extensionsv1alpha1.Network, error)
 	// DeleteStaleResources deletes Network resources of other networking types than the shoot's current one (left over
-	// from changing the networking type), once no Machine or MachineSet uses their networking type anymore.
+	// from changing the networking type).
 	DeleteStaleResources(ctx context.Context) error
-	// WaitCleanupStaleResources waits until all stale Network resources that are no longer in use are cleaned up.
+	// WaitCleanupStaleResources waits until all stale Network resources are cleaned up.
 	WaitCleanupStaleResources(ctx context.Context) error
 }
 
@@ -233,39 +231,37 @@ func (n *network) WaitCleanup(ctx context.Context) error {
 	)
 }
 
-// DeleteStaleResources deletes Network resources of other networking types than the shoot's current one, once no
-// Machine or MachineSet uses their networking type anymore.
+// DeleteStaleResources deletes Network resources of other networking types than the shoot's current one (left over
+// from changing the networking type).
 func (n *network) DeleteStaleResources(ctx context.Context) error {
-	unusedNetworks, err := n.unusedStaleNetworks(ctx)
-	if err != nil {
+	if err := n.resolve(ctx); err != nil {
 		return err
 	}
 
 	var fns []flow.TaskFn
-	for _, network := range unusedNetworks {
+	for _, staleNetwork := range n.staleNetworks {
 		fns = append(fns, func(ctx context.Context) error {
-			return extensions.DeleteExtensionObject(ctx, n.client, network)
+			return extensions.DeleteExtensionObject(ctx, n.client, staleNetwork)
 		})
 	}
 
 	return flow.Parallel(fns...)(ctx)
 }
 
-// WaitCleanupStaleResources waits until all stale Network resources that are no longer in use are cleaned up.
+// WaitCleanupStaleResources waits until all stale Network resources are cleaned up.
 func (n *network) WaitCleanupStaleResources(ctx context.Context) error {
-	unusedNetworks, err := n.unusedStaleNetworks(ctx)
-	if err != nil {
+	if err := n.resolve(ctx); err != nil {
 		return err
 	}
 
 	var fns []flow.TaskFn
-	for _, network := range unusedNetworks {
+	for _, staleNetwork := range n.staleNetworks {
 		fns = append(fns, func(ctx context.Context) error {
 			return extensions.WaitUntilExtensionObjectDeleted(
 				ctx,
 				n.client,
 				n.log,
-				network,
+				staleNetwork,
 				extensionsv1alpha1.NetworkResource,
 				n.waitInterval,
 				n.waitTimeout,
@@ -274,51 +270,6 @@ func (n *network) WaitCleanupStaleResources(ctx context.Context) error {
 	}
 
 	return flow.Parallel(fns...)(ctx)
-}
-
-// unusedStaleNetworks returns the stale Network resources whose networking type is not used by any Machine or
-// MachineSet, i.e., there is no Machine or MachineSet with the networking provider label in its node template.
-func (n *network) unusedStaleNetworks(ctx context.Context) ([]*extensionsv1alpha1.Network, error) {
-	if err := n.resolve(ctx); err != nil {
-		return nil, err
-	}
-
-	if len(n.staleNetworks) == 0 {
-		return nil, nil
-	}
-
-	usedTypes := sets.New[string]()
-
-	machineSetList := &machinev1alpha1.MachineSetList{}
-	if err := n.client.List(ctx, machineSetList, client.InNamespace(n.values.Namespace)); err != nil {
-		return nil, fmt.Errorf("failed listing MachineSets: %w", err)
-	}
-	for _, machineSet := range machineSetList.Items {
-		if networkingType, ok := machineSet.Spec.Template.Spec.NodeTemplateSpec.Labels[v1beta1constants.LabelNetworkingProvider]; ok {
-			usedTypes.Insert(networkingType)
-		}
-	}
-
-	machineList := &machinev1alpha1.MachineList{}
-	if err := n.client.List(ctx, machineList, client.InNamespace(n.values.Namespace)); err != nil {
-		return nil, fmt.Errorf("failed listing Machines: %w", err)
-	}
-	for _, machine := range machineList.Items {
-		if networkingType, ok := machine.Spec.NodeTemplateSpec.Labels[v1beta1constants.LabelNetworkingProvider]; ok {
-			usedTypes.Insert(networkingType)
-		}
-	}
-
-	var unusedNetworks []*extensionsv1alpha1.Network
-	for _, network := range n.staleNetworks {
-		if usedTypes.Has(network.Spec.Type) {
-			n.log.Info("Keeping stale Network as its networking type is still used by Machines", "network", client.ObjectKeyFromObject(network), "type", network.Spec.Type)
-			continue
-		}
-		unusedNetworks = append(unusedNetworks, network)
-	}
-
-	return unusedNetworks, nil
 }
 
 // resolve determines the name of the Network resource for the shoot's current networking type and the stale Network

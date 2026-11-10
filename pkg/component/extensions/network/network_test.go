@@ -10,7 +10,6 @@ import (
 	"net"
 	"time"
 
-	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,7 +24,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/component"
 	"github.com/gardener/gardener/pkg/component/extensions/network"
 	"github.com/gardener/gardener/pkg/extensions"
 	gardenerutils "github.com/gardener/gardener/pkg/utils/gardener"
@@ -55,7 +53,7 @@ var _ = Describe("#Network", func() {
 		expected, empty  *extensionsv1alpha1.Network
 		values           *network.Values
 		log              logr.Logger
-		defaultDepWaiter component.DeployMigrateWaiter
+		defaultDepWaiter network.Interface
 
 		fakeClock *testclock.FakeClock
 		now       time.Time
@@ -76,7 +74,6 @@ var _ = Describe("#Network", func() {
 
 		scheme = runtime.NewScheme()
 		Expect(extensionsv1alpha1.AddToScheme(scheme)).NotTo(HaveOccurred())
-		Expect(machinev1alpha1.AddToScheme(scheme)).NotTo(HaveOccurred())
 
 		c = fakeclient.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&extensionsv1alpha1.Network{}).Build()
 
@@ -387,88 +384,27 @@ var _ = Describe("#Network", func() {
 	})
 
 	Describe("#DeleteStaleResources", func() {
-		var (
-			networkInterface network.Interface
-			staleNetwork     *extensionsv1alpha1.Network
-			currentNetwork   *extensionsv1alpha1.Network
-		)
-
-		BeforeEach(func(ctx SpecContext) {
-			networkInterface = network.New(log, c, values, time.Millisecond, 250*time.Millisecond, 500*time.Millisecond)
-
-			staleNetwork = newNetwork(networkName, "cilium")
-			currentNetwork = newNetwork(networkName+"-"+networkType, networkType)
+		It("should delete stale Networks and keep the Network of the current type", func(ctx SpecContext) {
+			staleNetwork := newNetwork(networkName, "cilium")
+			currentNetwork := newNetwork(networkName+"-"+networkType, networkType)
 			Expect(c.Create(ctx, staleNetwork)).To(Succeed())
 			Expect(c.Create(ctx, currentNetwork)).To(Succeed())
 
-			Expect(c.Create(ctx, &machinev1alpha1.MachineSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "machineset-new", Namespace: networkNs},
-				Spec: machinev1alpha1.MachineSetSpec{Template: machinev1alpha1.MachineTemplateSpec{Spec: machinev1alpha1.MachineSpec{
-					NodeTemplateSpec: machinev1alpha1.NodeTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-						v1beta1constants.LabelNetworkingProvider: networkType,
-					}}},
-				}}},
-			})).To(Succeed())
-			Expect(c.Create(ctx, &machinev1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{Name: "machine-new", Namespace: networkNs},
-				Spec: machinev1alpha1.MachineSpec{
-					NodeTemplateSpec: machinev1alpha1.NodeTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-						v1beta1constants.LabelNetworkingProvider: networkType,
-					}}},
-				},
-			})).To(Succeed())
-		})
-
-		expectNetworks := func(ctx context.Context, names ...string) {
-			GinkgoHelper()
+			Expect(defaultDepWaiter.DeleteStaleResources(ctx)).To(Succeed())
+			Expect(defaultDepWaiter.WaitCleanupStaleResources(ctx)).To(Succeed())
 
 			networkList := &extensionsv1alpha1.NetworkList{}
 			Expect(c.List(ctx, networkList)).To(Succeed())
-
-			var actualNames []string
-			for _, n := range networkList.Items {
-				actualNames = append(actualNames, n.Name)
-			}
-			Expect(actualNames).To(ConsistOf(names))
-		}
-
-		It("should delete stale Networks that are not used by any Machine or MachineSet", func(ctx SpecContext) {
-			Expect(networkInterface.DeleteStaleResources(ctx)).To(Succeed())
-			Expect(networkInterface.WaitCleanupStaleResources(ctx)).To(Succeed())
-
-			expectNetworks(ctx, currentNetwork.Name)
+			Expect(networkList.Items).To(ConsistOf(HaveField("ObjectMeta.Name", currentNetwork.Name)))
 		})
 
-		It("should keep stale Networks that are still used by a MachineSet", func(ctx SpecContext) {
-			Expect(c.Create(ctx, &machinev1alpha1.MachineSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "machineset-old", Namespace: networkNs},
-				Spec: machinev1alpha1.MachineSetSpec{Template: machinev1alpha1.MachineTemplateSpec{Spec: machinev1alpha1.MachineSpec{
-					NodeTemplateSpec: machinev1alpha1.NodeTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-						v1beta1constants.LabelNetworkingProvider: "cilium",
-					}}},
-				}}},
-			})).To(Succeed())
+		It("should do nothing if there are no stale Networks", func(ctx SpecContext) {
+			Expect(c.Create(ctx, newNetwork(networkName, networkType))).To(Succeed())
 
-			Expect(networkInterface.DeleteStaleResources(ctx)).To(Succeed())
-			Expect(networkInterface.WaitCleanupStaleResources(ctx)).To(Succeed())
+			Expect(defaultDepWaiter.DeleteStaleResources(ctx)).To(Succeed())
+			Expect(defaultDepWaiter.WaitCleanupStaleResources(ctx)).To(Succeed())
 
-			expectNetworks(ctx, staleNetwork.Name, currentNetwork.Name)
-		})
-
-		It("should keep stale Networks that are still used by a Machine", func(ctx SpecContext) {
-			Expect(c.Create(ctx, &machinev1alpha1.Machine{
-				ObjectMeta: metav1.ObjectMeta{Name: "machine-old", Namespace: networkNs},
-				Spec: machinev1alpha1.MachineSpec{
-					NodeTemplateSpec: machinev1alpha1.NodeTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-						v1beta1constants.LabelNetworkingProvider: "cilium",
-					}}},
-				},
-			})).To(Succeed())
-
-			Expect(networkInterface.DeleteStaleResources(ctx)).To(Succeed())
-			Expect(networkInterface.WaitCleanupStaleResources(ctx)).To(Succeed())
-
-			expectNetworks(ctx, staleNetwork.Name, currentNetwork.Name)
+			Expect(c.Get(ctx, client.ObjectKey{Name: networkName, Namespace: networkNs}, &extensionsv1alpha1.Network{})).To(Succeed())
 		})
 	})
 
