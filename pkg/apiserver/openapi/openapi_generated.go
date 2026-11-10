@@ -7285,6 +7285,13 @@ func schema_pkg_apis_core_v1beta1_NetworkingStatus(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the current networking type. If this field differs from spec.networking.type, a migration from one CNI to another is currently ongoing. When the migration is completed, spec.networking.type and status.networking.type have the same value.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

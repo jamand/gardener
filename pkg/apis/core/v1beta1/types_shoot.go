@@ -277,6 +277,11 @@ type NetworkingStatus struct {
 	// extension controller may opt to not populate this field.
 	// +optional
 	EgressCIDRs []string `json:"egressCIDRs,omitempty" protobuf:"bytes,4,rep,name=egressCIDRs"`
+	// Type is the current networking type. If this field differs from spec.networking.type, a migration from one CNI
+	// to another is currently ongoing. When the migration is completed, spec.networking.type and status.networking.type
+	// have the same value.
+	// +optional
+	Type *string `json:"type,omitempty" protobuf:"bytes,5,opt,name=type"`
 }
 
 // InPlaceUpdatesStatus contains information about in-place updates for the Shoot workers.

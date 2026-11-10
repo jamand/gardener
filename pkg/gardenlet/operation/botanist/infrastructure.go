@@ -66,7 +66,7 @@ func (b *Botanist) WaitForInfrastructure(ctx context.Context) error {
 		return err
 	}
 
-	networkingStatus := &gardencorev1beta1.NetworkingStatus{}
+	networkingStatus := b.Shoot.GetInfo().Status.Networking.DeepCopy()
 	if nodesCIDRs := b.Shoot.Components.Extensions.Infrastructure.NodesCIDRs(); len(nodesCIDRs) > 0 {
 		// Only update node CIDR if it's not already set.
 		if b.Shoot.GetInfo().Spec.Networking.Nodes == nil {

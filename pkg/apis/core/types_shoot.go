@@ -204,6 +204,10 @@ type NetworkingStatus struct {
 	// Infrastructure extension controller. For certain environments the egress IPs may not be stable in which case the
 	// extension controller may opt to not populate this field.
 	EgressCIDRs []string
+	// Type is the current networking type. If this field differs from spec.networking.type, a migration from one CNI
+	// to another is currently ongoing. When the migration is completed, spec.networking.type and status.networking.type
+	// have the same value.
+	Type *string
 }
 
 // InPlaceUpdatesStatus contains information about in-place updates for the Shoot workers.

@@ -2615,6 +2615,12 @@ message NetworkingStatus {
   // extension controller may opt to not populate this field.
   // +optional
   repeated string egressCIDRs = 4;
+
+  // Type is the current networking type. If this field differs from spec.networking.type, a migration from one CNI
+  // to another is currently ongoing. When the migration is completed, spec.networking.type and status.networking.type
+  // have the same value.
+  // +optional
+  optional string type = 5;
 }
 
 // NginxIngress describes configuration values for the nginx-ingress addon.

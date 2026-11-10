@@ -8399,6 +8399,13 @@ func (m *NetworkingStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Type != nil {
+		i -= len(*m.Type)
+		copy(dAtA[i:], *m.Type)
+		i = encodeVarintGenerated(dAtA, i, uint64(len(*m.Type)))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.EgressCIDRs) > 0 {
 		for iNdEx := len(m.EgressCIDRs) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.EgressCIDRs[iNdEx])
@@ -16804,6 +16811,10 @@ func (m *NetworkingStatus) Size() (n int) {
 			n += 1 + l + sovGenerated(uint64(l))
 		}
 	}
+	if m.Type != nil {
+		l = len(*m.Type)
+		n += 1 + l + sovGenerated(uint64(l))
+	}
 	return n
 }
 
@@ -20803,6 +20814,7 @@ func (this *NetworkingStatus) String() string {
 		`Nodes:` + fmt.Sprintf("%v", this.Nodes) + `,`,
 		`Services:` + fmt.Sprintf("%v", this.Services) + `,`,
 		`EgressCIDRs:` + fmt.Sprintf("%v", this.EgressCIDRs) + `,`,
+		`Type:` + valueToStringGenerated(this.Type) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -45343,6 +45355,39 @@ func (m *NetworkingStatus) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.EgressCIDRs = append(m.EgressCIDRs, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Type = &s
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

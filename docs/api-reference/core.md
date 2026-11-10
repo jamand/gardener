@@ -8963,6 +8963,18 @@ string array
 <p>EgressCIDRs is a list of CIDRs used by the shoot as the source IP for egress traffic as reported by the used<br />Infrastructure extension controller. For certain environments the egress IPs may not be stable in which case the<br />extension controller may opt to not populate this field.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>type</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Type is the current networking type. If this field differs from spec.networking.type, a migration from one CNI<br />to another is currently ongoing. When the migration is completed, spec.networking.type and status.networking.type<br />have the same value.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

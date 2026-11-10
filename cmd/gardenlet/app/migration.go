@@ -25,6 +25,12 @@ func (g *garden) runMigrations(ctx context.Context, gardenClient client.Client) 
 		}
 	}
 
+	if !gardenlet.IsResponsibleForSelfHostedShoot() {
+		if err := AddShootStatusNetworkingType(ctx, gardenClient, g.config.SeedConfig.Name); err != nil {
+			return fmt.Errorf("failed to update the networking status of existing shoots: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -60,6 +66,44 @@ func VerifyRemoveHTTPProxyLegacyPortMigration(ctx context.Context, gardenClient 
 
 		if cond := helper.GetCondition(shoot.Status.Constraints, gardencorev1beta1.ShootUsesUnifiedHTTPProxyPort); cond == nil || cond.Status != gardencorev1beta1.ConditionTrue {
 			return errors.New("the `tls-tunnel` port on the istio ingress gateway cannot be removed until the api server proxy and vpn client in all shoots on this seed have been reconfigured to use the unified `http-proxy` port instead, i.e., the `RemoveHTTPProxyLegacyPort` feature gate can only be enabled once all shoots have the `UsesUnifiedHTTPProxyPort` constraint with status `true`")
+		}
+	}
+
+	return nil
+}
+
+// AddShootStatusNetworkingType backfills the new Shoot.status.networking.type field for existing shoots that don't have
+// it yet.
+func AddShootStatusNetworkingType(ctx context.Context, gardenClient client.Client, seedName string) error {
+	shootList := &gardencorev1beta1.ShootList{}
+	if err := gardenClient.List(ctx, shootList); err != nil {
+		return err
+	}
+
+	for _, shoot := range shootList.Items {
+		if specSeedName, statusSeedName := gardenerutils.GetShootSeedNames(&shoot); gardenerutils.GetResponsibleSeedName(specSeedName, statusSeedName) != seedName {
+			continue
+		}
+
+		// Skip workerless Shoots as they don't have any `Network` resource.
+		if helper.IsWorkerless(&shoot) {
+			continue
+		}
+
+		// Skip if not picked up yet or Creating/Deleting.
+		if shoot.Status.LastOperation == nil || ((shoot.Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeCreate || shoot.Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeDelete) && shoot.Status.LastOperation.State != gardencorev1beta1.LastOperationStateSucceeded) {
+			continue
+		}
+
+		patch := client.MergeFrom(shoot.DeepCopy())
+		if shoot.Status.Networking == nil {
+			shoot.Status.Networking = &gardencorev1beta1.NetworkingStatus{}
+		}
+		if shoot.Status.Networking.Type == nil {
+			shoot.Status.Networking.Type = shoot.Spec.Networking.Type
+			if err := gardenClient.Status().Patch(ctx, &shoot, patch); err != nil {
+				return fmt.Errorf("failed to update networking status of shoot %q: %w", client.ObjectKeyFromObject(&shoot), err)
+			}
 		}
 	}
 

@@ -812,6 +812,17 @@ func (r *Reconciler) updateShootStatusOperationStart(
 		startRotationETCDEncryptionKey(shoot, true, &now)
 	}
 
+	if shoot.Status.Networking == nil {
+		shoot.Status.Networking = &gardencorev1beta1.NetworkingStatus{}
+	}
+	if operationType == gardencorev1beta1.LastOperationTypeCreate {
+		shoot.Status.Networking.Type = shoot.Spec.Networking.Type
+	}
+	if !equality.Semantic.DeepEqual(shoot.Spec.Networking.Type, shoot.Status.Networking.Type) &&
+		v1beta1helper.GetShootCARotationPhase(shoot.Status.Credentials) == gardencorev1beta1.RotationCompleting {
+		shoot.Status.Networking.Type = shoot.Spec.Networking.Type
+	}
+
 	if err := r.GardenClient.Status().Update(ctx, shoot); err != nil {
 		return err
 	}
