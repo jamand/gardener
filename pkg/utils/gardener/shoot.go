@@ -175,7 +175,9 @@ func NodeLabelsForWorkerPool(workerPool gardencorev1beta1.Worker, nodeLocalDNSEn
 	labels["kubernetes.io/arch"] = ptr.Deref(workerPool.Machine.Architecture, v1beta1constants.ArchitectureAMD64)
 
 	labels[v1beta1constants.LabelNodeLocalDNS] = strconv.FormatBool(nodeLocalDNSEnabled)
-	labels[v1beta1constants.LabelNetworkingProvider] = networkingType
+	if networkingType != "" {
+		labels[v1beta1constants.LabelNetworkingProvider] = networkingType
+	}
 
 	if v1beta1helper.SystemComponentsAllowed(&workerPool) {
 		labels[v1beta1constants.LabelWorkerPoolSystemComponents] = "true"
