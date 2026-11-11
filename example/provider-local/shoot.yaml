@@ -6,20 +6,23 @@ metadata:
   annotations:
     shoot.gardener.cloud/cloud-config-execution-max-delay-seconds: "0"
     authentication.gardener.cloud/issuer: "managed"
+#    gardener.cloud/operation: migrate-cni-start-without-workers-rollout
 spec:
   cloudProfile:
     name: local
   credentialsBindingName: local
+  extensions:
+  - type: shoot-networking-problemdetector
   region: local
   networking:
     type: calico
+#    type: cilium
     # Must be within 10.0.0.0/16 (subnet of kind pod CIDR 10.0.0.0/15, but disjoint with seed pod CIDR 10.1.0.0/16).
     nodes: 10.0.0.0/16
-    # Disable calico-typha so Felix watches the kube-apiserver directly. Typha's watcher cache can block resync for
-    # 30m after a transient kube-apiserver outage (e.g. during data plane rolls), leaving newly rolled pods with
-    # unprogrammed network interfaces.
     providerConfig:
       typha:
+        enabled: false
+      overlay:
         enabled: false
   provider:
     type: local
@@ -30,7 +33,16 @@ spec:
       cri:
         name: containerd
       minimum: 1
-      maximum: 2
+      maximum: 1
+      maxSurge: 1
+      maxUnavailable: 0
+    - name: local2
+      machine:
+        type: local
+      cri:
+        name: containerd
+      minimum: 1
+      maximum: 1
       maxSurge: 1
       maxUnavailable: 0
   kubernetes:

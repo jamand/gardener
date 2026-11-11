@@ -13,7 +13,7 @@ spec:
     featureGates:
       DefaultSeccompProfile: true
       VPNBondingModeRoundRobin: true
-      PrometheusHealthChecks: true
+      PrometheusHealthChecks: false
       VictoriaLogsBackend: true
       LiveControlPlaneMigration: true
     controllers:
