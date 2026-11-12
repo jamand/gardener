@@ -352,6 +352,8 @@ func (m *ResourceData) Reset() { *m = ResourceData{} }
 
 func (m *ResourceWatchCacheSize) Reset() { *m = ResourceWatchCacheSize{} }
 
+func (m *RolloutOperation) Reset() { *m = RolloutOperation{} }
+
 func (m *SSHAccess) Reset() { *m = SSHAccess{} }
 
 func (m *SecretBinding) Reset() { *m = SecretBinding{} }
@@ -9565,6 +9567,101 @@ func (m *ResourceWatchCacheSize) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
+func (m *RolloutOperation) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RolloutOperation) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RolloutOperation) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.PendingWorkersRollouts) > 0 {
+		for iNdEx := len(m.PendingWorkersRollouts) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.PendingWorkersRollouts[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenerated(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x3a
+		}
+	}
+	if m.LastCompletionTriggeredTime != nil {
+		{
+			size, err := m.LastCompletionTriggeredTime.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGenerated(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	if m.LastInitiationFinishedTime != nil {
+		{
+			size, err := m.LastInitiationFinishedTime.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGenerated(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	if m.LastInitiationTime != nil {
+		{
+			size, err := m.LastInitiationTime.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGenerated(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	if m.LastCompletionTime != nil {
+		{
+			size, err := m.LastCompletionTime.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGenerated(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	i -= len(m.Phase)
+	copy(dAtA[i:], m.Phase)
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Phase)))
+	i--
+	dAtA[i] = 0x12
+	i -= len(m.Name)
+	copy(dAtA[i:], m.Name)
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.Name)))
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+
 func (m *SSHAccess) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -12477,6 +12574,22 @@ func (m *ShootStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.RolloutOperations) > 0 {
+		for iNdEx := len(m.RolloutOperations) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.RolloutOperations[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenerated(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xba
+		}
+	}
 	if m.LiveMigration != nil {
 		{
 			size, err := m.LiveMigration.MarshalToSizedBuffer(dAtA[:i])
@@ -17241,6 +17354,41 @@ func (m *ResourceWatchCacheSize) Size() (n int) {
 	return n
 }
 
+func (m *RolloutOperation) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	n += 1 + l + sovGenerated(uint64(l))
+	l = len(m.Phase)
+	n += 1 + l + sovGenerated(uint64(l))
+	if m.LastCompletionTime != nil {
+		l = m.LastCompletionTime.Size()
+		n += 1 + l + sovGenerated(uint64(l))
+	}
+	if m.LastInitiationTime != nil {
+		l = m.LastInitiationTime.Size()
+		n += 1 + l + sovGenerated(uint64(l))
+	}
+	if m.LastInitiationFinishedTime != nil {
+		l = m.LastInitiationFinishedTime.Size()
+		n += 1 + l + sovGenerated(uint64(l))
+	}
+	if m.LastCompletionTriggeredTime != nil {
+		l = m.LastCompletionTriggeredTime.Size()
+		n += 1 + l + sovGenerated(uint64(l))
+	}
+	if len(m.PendingWorkersRollouts) > 0 {
+		for _, e := range m.PendingWorkersRollouts {
+			l = e.Size()
+			n += 1 + l + sovGenerated(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *SSHAccess) Size() (n int) {
 	if m == nil {
 		return 0
@@ -18386,6 +18534,12 @@ func (m *ShootStatus) Size() (n int) {
 	if m.LiveMigration != nil {
 		l = m.LiveMigration.Size()
 		n += 2 + l + sovGenerated(uint64(l))
+	}
+	if len(m.RolloutOperations) > 0 {
+		for _, e := range m.RolloutOperations {
+			l = e.Size()
+			n += 2 + l + sovGenerated(uint64(l))
+		}
 	}
 	return n
 }
@@ -21135,6 +21289,27 @@ func (this *ResourceWatchCacheSize) String() string {
 	}, "")
 	return s
 }
+func (this *RolloutOperation) String() string {
+	if this == nil {
+		return "nil"
+	}
+	repeatedStringForPendingWorkersRollouts := "[]PendingWorkersRollout{"
+	for _, f := range this.PendingWorkersRollouts {
+		repeatedStringForPendingWorkersRollouts += strings.Replace(strings.Replace(f.String(), "PendingWorkersRollout", "PendingWorkersRollout", 1), `&`, ``, 1) + ","
+	}
+	repeatedStringForPendingWorkersRollouts += "}"
+	s := strings.Join([]string{`&RolloutOperation{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`Phase:` + fmt.Sprintf("%v", this.Phase) + `,`,
+		`LastCompletionTime:` + strings.Replace(fmt.Sprintf("%v", this.LastCompletionTime), "Time", "v11.Time", 1) + `,`,
+		`LastInitiationTime:` + strings.Replace(fmt.Sprintf("%v", this.LastInitiationTime), "Time", "v11.Time", 1) + `,`,
+		`LastInitiationFinishedTime:` + strings.Replace(fmt.Sprintf("%v", this.LastInitiationFinishedTime), "Time", "v11.Time", 1) + `,`,
+		`LastCompletionTriggeredTime:` + strings.Replace(fmt.Sprintf("%v", this.LastCompletionTriggeredTime), "Time", "v11.Time", 1) + `,`,
+		`PendingWorkersRollouts:` + repeatedStringForPendingWorkersRollouts + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *SSHAccess) String() string {
 	if this == nil {
 		return "nil"
@@ -21945,6 +22120,11 @@ func (this *ShootStatus) String() string {
 		repeatedStringForAdvertisedAddresses += strings.Replace(strings.Replace(f.String(), "ShootAdvertisedAddress", "ShootAdvertisedAddress", 1), `&`, ``, 1) + ","
 	}
 	repeatedStringForAdvertisedAddresses += "}"
+	repeatedStringForRolloutOperations := "[]RolloutOperation{"
+	for _, f := range this.RolloutOperations {
+		repeatedStringForRolloutOperations += strings.Replace(strings.Replace(f.String(), "RolloutOperation", "RolloutOperation", 1), `&`, ``, 1) + ","
+	}
+	repeatedStringForRolloutOperations += "}"
 	s := strings.Join([]string{`&ShootStatus{`,
 		`Conditions:` + repeatedStringForConditions + `,`,
 		`Constraints:` + repeatedStringForConstraints + `,`,
@@ -21967,6 +22147,7 @@ func (this *ShootStatus) String() string {
 		`InPlaceUpdates:` + strings.Replace(this.InPlaceUpdates.String(), "InPlaceUpdatesStatus", "InPlaceUpdatesStatus", 1) + `,`,
 		`ManualWorkerPoolRollout:` + strings.Replace(this.ManualWorkerPoolRollout.String(), "ManualWorkerPoolRollout", "ManualWorkerPoolRollout", 1) + `,`,
 		`LiveMigration:` + strings.Replace(this.LiveMigration.String(), "LiveMigration", "LiveMigration", 1) + `,`,
+		`RolloutOperations:` + repeatedStringForRolloutOperations + `,`,
 		`}`,
 	}, "")
 	return s
@@ -48741,6 +48922,298 @@ func (m *ResourceWatchCacheSize) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *RolloutOperation) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenerated
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RolloutOperation: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RolloutOperation: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Phase", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Phase = CredentialsRotationPhase(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastCompletionTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastCompletionTime == nil {
+				m.LastCompletionTime = &v11.Time{}
+			}
+			if err := m.LastCompletionTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastInitiationTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastInitiationTime == nil {
+				m.LastInitiationTime = &v11.Time{}
+			}
+			if err := m.LastInitiationTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastInitiationFinishedTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastInitiationFinishedTime == nil {
+				m.LastInitiationFinishedTime = &v11.Time{}
+			}
+			if err := m.LastInitiationFinishedTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastCompletionTriggeredTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastCompletionTriggeredTime == nil {
+				m.LastCompletionTriggeredTime = &v11.Time{}
+			}
+			if err := m.LastCompletionTriggeredTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PendingWorkersRollouts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PendingWorkersRollouts = append(m.PendingWorkersRollouts, PendingWorkersRollout{})
+			if err := m.PendingWorkersRollouts[len(m.PendingWorkersRollouts)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenerated(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *SSHAccess) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -57964,6 +58437,40 @@ func (m *ShootStatus) Unmarshal(dAtA []byte) error {
 				m.LiveMigration = &LiveMigration{}
 			}
 			if err := m.LiveMigration.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 23:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RolloutOperations", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RolloutOperations = append(m.RolloutOperations, RolloutOperation{})
+			if err := m.RolloutOperations[len(m.RolloutOperations)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

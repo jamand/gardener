@@ -65,6 +65,7 @@ API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,Provider,Workers
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,Region,AccessRestrictions
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,Region,Zones
+API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,RolloutOperation,PendingWorkersRollouts
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,SecretBinding,Quotas
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,SeedDNS,Defaults
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,SeedNetworks,BlockCIDRs
@@ -94,6 +95,7 @@ API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,ShootStatus,Conditions
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,ShootStatus,Constraints
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,ShootStatus,LastErrors
+API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,ShootStatus,RolloutOperations
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,StructuredAuthorization,Kubeconfigs
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,WatchCacheSizes,Resources
 API rule violation: list_type_missing,github.com/gardener/gardener/pkg/apis/core/v1beta1,Worker,DataVolumes

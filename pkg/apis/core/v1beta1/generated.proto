@@ -2979,6 +2979,38 @@ message ResourceWatchCacheSize {
   optional int32 size = 3;
 }
 
+// RolloutOperation contains information about the rollout operation.
+message RolloutOperation {
+  // Name is the name of the operation.
+  // +required
+  optional string name = 1;
+
+  // Phase describes the phase of the operation.
+  // +required
+  optional string phase = 2;
+
+  // LastCompletionTime is the most recent time when the rollout operation was successfully completed.
+  // +optional
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastCompletionTime = 3;
+
+  // LastInitiationTime is the most recent time when the rollout operation was initiated.
+  // +optional
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastInitiationTime = 4;
+
+  // LastInitiationFinishedTime is the recent time when the rollout operation initiation was completed.
+  // +optional
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastInitiationFinishedTime = 5;
+
+  // LastCompletionTriggeredTime is the recent time when the rollout operation completion was triggered.
+  // +optional
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastCompletionTriggeredTime = 6;
+
+  // PendingWorkersRollouts contains the name of a worker pool and the initiation time of their last rollout due to
+  // the operation.
+  // +optional
+  repeated PendingWorkersRollout pendingWorkersRollouts = 7;
+}
+
 // SSHAccess contains settings regarding ssh access to the worker nodes.
 message SSHAccess {
   // Enabled indicates whether the SSH access to the worker nodes is ensured to be enabled or disabled in systemd.
@@ -3973,6 +4005,12 @@ message ShootStatus {
   // LiveMigration contains information about an ongoing live control plane migration of the Shoot.
   // +optional
   optional LiveMigration liveMigration = 22;
+
+  // RolloutOperations are ongoing operations that require a worker pool rollout.
+  // +patchMergeKey=name
+  // +patchStrategy=merge
+  // +optional
+  repeated RolloutOperation rolloutOperations = 23;
 }
 
 // ShootTemplate is a template for creating a Shoot object.

@@ -201,6 +201,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1beta1.Region{}.OpenAPIModelName():                                       schema_pkg_apis_core_v1beta1_Region(ref),
 		v1beta1.ResourceData{}.OpenAPIModelName():                                 schema_pkg_apis_core_v1beta1_ResourceData(ref),
 		v1beta1.ResourceWatchCacheSize{}.OpenAPIModelName():                       schema_pkg_apis_core_v1beta1_ResourceWatchCacheSize(ref),
+		v1beta1.RolloutOperation{}.OpenAPIModelName():                             schema_pkg_apis_core_v1beta1_RolloutOperation(ref),
 		v1beta1.SSHAccess{}.OpenAPIModelName():                                    schema_pkg_apis_core_v1beta1_SSHAccess(ref),
 		v1beta1.SecretBinding{}.OpenAPIModelName():                                schema_pkg_apis_core_v1beta1_SecretBinding(ref),
 		v1beta1.SecretBindingList{}.OpenAPIModelName():                            schema_pkg_apis_core_v1beta1_SecretBindingList(ref),
@@ -8269,6 +8270,75 @@ func schema_pkg_apis_core_v1beta1_ResourceWatchCacheSize(ref common.ReferenceCal
 	}
 }
 
+func schema_pkg_apis_core_v1beta1_RolloutOperation(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RolloutOperation contains information about the rollout operation.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the operation.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase describes the phase of the operation.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastCompletionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastCompletionTime is the most recent time when the rollout operation was successfully completed.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"lastInitiationTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastInitiationTime is the most recent time when the rollout operation was initiated.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"lastInitiationFinishedTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastInitiationFinishedTime is the recent time when the rollout operation initiation was completed.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"lastCompletionTriggeredTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastCompletionTriggeredTime is the recent time when the rollout operation completion was triggered.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"pendingWorkersRollouts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PendingWorkersRollouts contains the name of a worker pool and the initiation time of their last rollout due to the operation.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1beta1.PendingWorkersRollout{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "phase"},
+			},
+		},
+		Dependencies: []string{
+			v1beta1.PendingWorkersRollout{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
+	}
+}
+
 func schema_pkg_apis_core_v1beta1_SSHAccess(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -10685,12 +10755,31 @@ func schema_pkg_apis_core_v1beta1_ShootStatus(ref common.ReferenceCallback) comm
 							Ref:         ref(v1beta1.LiveMigration{}.OpenAPIModelName()),
 						},
 					},
+					"rolloutOperations": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "RolloutOperations are ongoing operations that require a worker pool rollout.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1beta1.RolloutOperation{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"gardener", "hibernated", "technicalID", "uid"},
 			},
 		},
 		Dependencies: []string{
-			v1beta1.Condition{}.OpenAPIModelName(), v1beta1.Gardener{}.OpenAPIModelName(), v1beta1.InPlaceUpdatesStatus{}.OpenAPIModelName(), v1beta1.LastError{}.OpenAPIModelName(), v1beta1.LastMaintenance{}.OpenAPIModelName(), v1beta1.LastOperation{}.OpenAPIModelName(), v1beta1.LiveMigration{}.OpenAPIModelName(), v1beta1.ManualWorkerPoolRollout{}.OpenAPIModelName(), v1beta1.NetworkingStatus{}.OpenAPIModelName(), v1beta1.ShootAdvertisedAddress{}.OpenAPIModelName(), v1beta1.ShootCredentials{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
+			v1beta1.Condition{}.OpenAPIModelName(), v1beta1.Gardener{}.OpenAPIModelName(), v1beta1.InPlaceUpdatesStatus{}.OpenAPIModelName(), v1beta1.LastError{}.OpenAPIModelName(), v1beta1.LastMaintenance{}.OpenAPIModelName(), v1beta1.LastOperation{}.OpenAPIModelName(), v1beta1.LiveMigration{}.OpenAPIModelName(), v1beta1.ManualWorkerPoolRollout{}.OpenAPIModelName(), v1beta1.NetworkingStatus{}.OpenAPIModelName(), v1beta1.RolloutOperation{}.OpenAPIModelName(), v1beta1.ShootAdvertisedAddress{}.OpenAPIModelName(), v1beta1.ShootCredentials{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 

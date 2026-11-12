@@ -174,6 +174,8 @@ type ShootStatus struct {
 	ManualWorkerPoolRollout *ManualWorkerPoolRollout
 	// LiveMigration contains information about an ongoing live control plane migration of the Shoot.
 	LiveMigration *LiveMigration
+	// RolloutOperations are ongoing operations that require a worker pool rollout.
+	RolloutOperations []RolloutOperation
 }
 
 // LastMaintenance holds information about a maintenance operation on the Shoot.
@@ -386,6 +388,25 @@ const (
 	// RotationCompleted is a constant for the credentials rotation phase describing that the procedure was completed.
 	RotationCompleted CredentialsRotationPhase = "Completed"
 )
+
+// RolloutOperation contains information about the rollout operation.
+type RolloutOperation struct {
+	// Name is the name of the operation.
+	Name string
+	// Phase describes the phase of the operation.
+	Phase CredentialsRotationPhase
+	// LastCompletionTime is the most recent time when the rollout operation was successfully completed.
+	LastCompletionTime *metav1.Time
+	// LastInitiationTime is the most recent time when the rollout operation was initiated.
+	LastInitiationTime *metav1.Time
+	// LastInitiationFinishedTime is the recent time when the rollout operation initiation was completed.
+	LastInitiationFinishedTime *metav1.Time
+	// LastCompletionTriggeredTime is the recent time when the rollout operation completion was triggered.
+	LastCompletionTriggeredTime *metav1.Time
+	// PendingWorkersRollouts contains the name of a worker pool and the initiation time of their last rollout due to
+	// the operation.
+	PendingWorkersRollouts []PendingWorkersRollout
+}
 
 // PendingWorkersRollout contains the name of a worker pool and the initiation time of their last rollout.
 type PendingWorkersRollout struct {

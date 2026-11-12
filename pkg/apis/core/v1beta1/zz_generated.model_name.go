@@ -800,6 +800,11 @@ func (in ResourceWatchCacheSize) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in RolloutOperation) OpenAPIModelName() string {
+	return "com.github.gardener.gardener.pkg.apis.core.v1beta1.RolloutOperation"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in SSHAccess) OpenAPIModelName() string {
 	return "com.github.gardener.gardener.pkg.apis.core.v1beta1.SSHAccess"
 }

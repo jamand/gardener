@@ -3495,7 +3495,7 @@ string array
 
 
 <p>
-(<em>Appears on:</em><a href="#carotation">CARotation</a>, <a href="#etcdencryptionkeyrotation">ETCDEncryptionKeyRotation</a>, <a href="#serviceaccountkeyrotation">ServiceAccountKeyRotation</a>)
+(<em>Appears on:</em><a href="#carotation">CARotation</a>, <a href="#etcdencryptionkeyrotation">ETCDEncryptionKeyRotation</a>, <a href="#rolloutoperation">RolloutOperation</a>, <a href="#serviceaccountkeyrotation">ServiceAccountKeyRotation</a>)
 </p>
 
 <p>
@@ -9329,7 +9329,7 @@ string array
 
 
 <p>
-(<em>Appears on:</em><a href="#carotation">CARotation</a>, <a href="#manualworkerpoolrollout">ManualWorkerPoolRollout</a>, <a href="#serviceaccountkeyrotation">ServiceAccountKeyRotation</a>)
+(<em>Appears on:</em><a href="#carotation">CARotation</a>, <a href="#manualworkerpoolrollout">ManualWorkerPoolRollout</a>, <a href="#rolloutoperation">RolloutOperation</a>, <a href="#serviceaccountkeyrotation">ServiceAccountKeyRotation</a>)
 </p>
 
 <p>
@@ -10204,6 +10204,114 @@ integer
 </td>
 <td>
 <p>CacheSize specifies the watch cache size that should be configured for the specified resource.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="rolloutoperation">RolloutOperation
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#shootstatus">ShootStatus</a>)
+</p>
+
+<p>
+RolloutOperation contains information about the rollout operation.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the operation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#credentialsrotationphase">CredentialsRotationPhase</a>
+</em>
+</td>
+<td>
+<p>Phase describes the phase of the operation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastCompletionTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta">Time</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastCompletionTime is the most recent time when the rollout operation was successfully completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastInitiationTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta">Time</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastInitiationTime is the most recent time when the rollout operation was initiated.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastInitiationFinishedTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta">Time</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastInitiationFinishedTime is the recent time when the rollout operation initiation was completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastCompletionTriggeredTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#time-v1-meta">Time</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastCompletionTriggeredTime is the recent time when the rollout operation completion was triggered.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pendingWorkersRollouts</code></br>
+<em>
+<a href="#pendingworkersrollout">PendingWorkersRollout</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PendingWorkersRollouts contains the name of a worker pool and the initiation time of their last rollout due to<br />the operation.</p>
 </td>
 </tr>
 
@@ -13398,6 +13506,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>LiveMigration contains information about an ongoing live control plane migration of the Shoot.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rolloutOperations</code></br>
+<em>
+<a href="#rolloutoperation">RolloutOperation</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RolloutOperations are ongoing operations that require a worker pool rollout.</p>
 </td>
 </tr>
 

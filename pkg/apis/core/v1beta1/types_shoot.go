@@ -238,6 +238,11 @@ type ShootStatus struct {
 	// LiveMigration contains information about an ongoing live control plane migration of the Shoot.
 	// +optional
 	LiveMigration *LiveMigration `json:"liveMigration,omitempty" protobuf:"bytes,22,opt,name=liveMigration"`
+	// RolloutOperations are ongoing operations that require a worker pool rollout.
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +optional
+	RolloutOperations []RolloutOperation `json:"rolloutOperations,omitempty" patchMergeKey:"name" patchStrategy:"merge" protobuf:"bytes,23,rep,name=rolloutOperations"`
 }
 
 // LastMaintenance holds information about a maintenance operation on the Shoot.
@@ -506,6 +511,32 @@ const (
 	// RotationCompleted is a constant for the credentials rotation phase describing that the procedure was completed.
 	RotationCompleted CredentialsRotationPhase = "Completed"
 )
+
+// RolloutOperation contains information about the rollout operation.
+type RolloutOperation struct {
+	// Name is the name of the operation.
+	// +required
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// Phase describes the phase of the operation.
+	// +required
+	Phase CredentialsRotationPhase `json:"phase" protobuf:"bytes,2,opt,name=phase,casttype=CredentialsRotationPhase"`
+	// LastCompletionTime is the most recent time when the rollout operation was successfully completed.
+	// +optional
+	LastCompletionTime *metav1.Time `json:"lastCompletionTime,omitempty" protobuf:"bytes,3,opt,name=lastCompletionTime"`
+	// LastInitiationTime is the most recent time when the rollout operation was initiated.
+	// +optional
+	LastInitiationTime *metav1.Time `json:"lastInitiationTime,omitempty" protobuf:"bytes,4,opt,name=lastInitiationTime"`
+	// LastInitiationFinishedTime is the recent time when the rollout operation initiation was completed.
+	// +optional
+	LastInitiationFinishedTime *metav1.Time `json:"lastInitiationFinishedTime,omitempty" protobuf:"bytes,5,opt,name=lastInitiationFinishedTime"`
+	// LastCompletionTriggeredTime is the recent time when the rollout operation completion was triggered.
+	// +optional
+	LastCompletionTriggeredTime *metav1.Time `json:"lastCompletionTriggeredTime,omitempty" protobuf:"bytes,6,opt,name=lastCompletionTriggeredTime"`
+	// PendingWorkersRollouts contains the name of a worker pool and the initiation time of their last rollout due to
+	// the operation.
+	// +optional
+	PendingWorkersRollouts []PendingWorkersRollout `json:"pendingWorkersRollouts,omitempty" protobuf:"bytes,7,rep,name=pendingWorkersRollouts"`
+}
 
 // PendingWorkersRollout contains the name of a worker pool and the initiation time of their last rollout.
 type PendingWorkersRollout struct {
