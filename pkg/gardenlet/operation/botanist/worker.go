@@ -48,6 +48,7 @@ func (b *Botanist) DefaultWorker() worker.Interface {
 			NodeLocalDNSEnabled: v1beta1helper.IsNodeLocalDNSEnabled(b.Shoot.GetInfo().Spec.SystemComponents),
 			PreferIPv6:          b.Shoot.PreferIPv6(),
 			NetworkingType:      *b.Shoot.GetInfo().Spec.Networking.Type,
+			ShootStatus:         b.Shoot.GetInfo().Status,
 		},
 		worker.DefaultInterval,
 		worker.DefaultSevereThreshold,
