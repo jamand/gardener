@@ -3576,11 +3576,6 @@ func validateShootOperationContext(operation string, shoot *core.Shoot, fldPath 
 			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot start CNI migration if .status.credentials.rotation.certificateAuthorities.phase is not 'Completed'"))
 		}
 		allErrs = append(allErrs, validatePendingWorkerUpdates(shoot, fldPath, "CNI migration")...)
-
-	case v1beta1constants.OperationMigrateCNIComplete:
-		if helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) != core.RotationPrepared {
-			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot complete CNI migration if .status.credentials.rotation.certificateAuthorities.phase is not 'Prepared'"))
-		}
 	}
 
 	if strings.HasPrefix(operation, v1beta1constants.OperationRotateRolloutWorkers) {

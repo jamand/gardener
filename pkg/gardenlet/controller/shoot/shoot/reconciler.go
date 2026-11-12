@@ -728,9 +728,6 @@ func (r *Reconciler) updateShootStatusOperationStart(
 		case v1beta1constants.OperationMigrateCNIStartWithoutWorkersRollout:
 			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
 			startRolloutOperationWithoutWorkersRollout(shoot, v1beta1constants.OperationMigrateCNI, &now)
-		case v1beta1constants.OperationMigrateCNIComplete:
-			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
-			completeRolloutOperation(shoot, v1beta1constants.OperationMigrateCNI, &now)
 		}
 
 		if strings.HasPrefix(operation, v1beta1constants.OperationRotateRolloutWorkers) {
@@ -841,6 +838,11 @@ func (r *Reconciler) updateShootStatusOperationStart(
 	if !equality.Semantic.DeepEqual(shoot.Spec.Networking.Type, shoot.Status.Networking.Type) &&
 		v1beta1helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) == gardencorev1beta1.RotationCompleting {
 		shoot.Status.Networking.Type = shoot.Spec.Networking.Type
+	}
+	// automatically complete the CNI migration on the next migration after finishing the preparation, i.e., automatically
+	// clean up the Network object as soon as it gets unused
+	if v1beta1helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) == gardencorev1beta1.RotationPrepared {
+		completeRolloutOperation(shoot, v1beta1constants.OperationMigrateCNI, &now)
 	}
 
 	if err := r.GardenClient.Status().Update(ctx, shoot); err != nil {
