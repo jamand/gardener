@@ -225,8 +225,7 @@ func (r *Reconciler) setupShootReconciliationFlow(ctx context.Context, b *botani
 		caRotationPreparing     = rotationPreparingPhases.Has(v1beta1helper.GetShootCARotationPhase(b.Shoot.GetInfo().Status.Credentials))
 		saKeyRotationPreparing  = rotationPreparingPhases.Has(v1beta1helper.GetShootServiceAccountKeyRotationPhase(b.Shoot.GetInfo().Status.Credentials))
 
-		caOrSAKeyRotationCompleting = v1beta1helper.GetShootCARotationPhase(b.Shoot.GetInfo().Status.Credentials) == gardencorev1beta1.RotationCompleting ||
-			v1beta1helper.GetShootServiceAccountKeyRotationPhase(b.Shoot.GetInfo().Status.Credentials) == gardencorev1beta1.RotationCompleting
+		cniMigrationCompleting = v1beta1helper.GetShootRolloutOperationPhase(b.Shoot.GetInfo().Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) == gardencorev1beta1.RotationCompleting
 	)
 
 	var (
@@ -596,7 +595,7 @@ func (r *Reconciler) setupShootReconciliationFlow(ctx context.Context, b *botani
 			Fn: flow.TaskFn(func(ctx context.Context) error {
 				return b.Shoot.Components.Extensions.Network.DeleteStaleResources(ctx)
 			}).RetryUntilTimeout(defaultInterval, defaultTimeout),
-			SkipIf:       b.Shoot.IsWorkerless || !caOrSAKeyRotationCompleting,
+			SkipIf:       b.Shoot.IsWorkerless || !cniMigrationCompleting,
 			Dependencies: flow.NewTaskIDs(reconcileSystemComponents),
 		})
 		_ = g.Add(flow.Task{
@@ -604,7 +603,7 @@ func (r *Reconciler) setupShootReconciliationFlow(ctx context.Context, b *botani
 			Fn: func(ctx context.Context) error {
 				return b.Shoot.Components.Extensions.Network.WaitCleanupStaleResources(ctx)
 			},
-			SkipIf:       b.Shoot.IsWorkerless || !caOrSAKeyRotationCompleting || b.Shoot.HibernationEnabled || flowCtx.skipReadiness,
+			SkipIf:       b.Shoot.IsWorkerless || !cniMigrationCompleting || b.Shoot.HibernationEnabled || flowCtx.skipReadiness,
 			Dependencies: flow.NewTaskIDs(deleteStaleNetworkResources),
 		})
 

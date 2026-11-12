@@ -471,6 +471,17 @@ const (
 	// Deprecated: This annotation is deprecated in favour of `rotate-etcd-encryption-key`, which does a full rotation.
 	// TODO(AleksandarSavchev): Remove this after support for Kubernetes v1.33 is dropped.
 	OperationRotateETCDEncryptionKeyComplete = "rotate-etcd-encryption-key-complete"
+	// OperationMigrateCNI is a constant for a rollout operation for migrating from one CNI to another.
+	OperationMigrateCNI = "migrate-cni"
+	// OperationMigrateCNIStart is a constant for an annotation indicating that the migration from one CNI to another
+	// shall be started.
+	OperationMigrateCNIStart = "migrate-cni-start"
+	// OperationMigrateCNIStartWithoutWorkersRollout is a constant for an annotation indicating that the migration from
+	// one CNI to another shall be started without rolling out the workers.
+	OperationMigrateCNIStartWithoutWorkersRollout = "migrate-cni-start-without-workers-rollout"
+	// OperationMigrateCNIComplete is a constant for an annotation indicating that the migration from one CNI to another
+	// shall be completed.
+	OperationMigrateCNIComplete = "migrate-cni-complete"
 	// OperationRotateRolloutWorkers is a constant for an annotation triggering the rollout of one or more worker pools
 	// (comma-separated) when the certificate authorities or service account signing key credentials rotation is in
 	// WaitingForWorkersRollout phase.

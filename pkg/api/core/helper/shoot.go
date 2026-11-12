@@ -126,6 +126,47 @@ func GetShootETCDEncryptionKeyRotationPhase(credentials *core.ShootCredentials) 
 	return ""
 }
 
+// GetShootRolloutOperationPhase returns the specified shoot CA rotation phase or an empty string
+func GetShootRolloutOperationPhase(operations []core.RolloutOperation, name string) core.CredentialsRotationPhase {
+	i := slices.IndexFunc(operations, func(o core.RolloutOperation) bool {
+		return o.Name == name
+	})
+	if i == -1 {
+		return ""
+	}
+	return operations[i].Phase
+}
+
+// MutateShootRolloutOperation mutates the .status.credentials.rotation.certificateAuthorities field based on the provided
+// mutation function. If the field is nil then it is initialized.
+func MutateShootRolloutOperation(shoot *core.Shoot, name string, f func(*core.RolloutOperation)) {
+	if f == nil {
+		return
+	}
+
+	var rolloutOperation *core.RolloutOperation
+	i := slices.IndexFunc(shoot.Status.RolloutOperations, func(o core.RolloutOperation) bool {
+		return o.Name == name
+	})
+	if i == -1 {
+		shoot.Status.RolloutOperations = append(shoot.Status.RolloutOperations, core.RolloutOperation{
+			Name: name,
+		})
+		rolloutOperation = &shoot.Status.RolloutOperations[len(shoot.Status.RolloutOperations)-1]
+	} else {
+		rolloutOperation = &shoot.Status.RolloutOperations[i]
+	}
+
+	f(rolloutOperation)
+}
+
+// HasShootRolloutOperationInPhase returns if the shoot has at least one ongoing rollout operation in the given phase.
+func HasShootRolloutOperationInPhase(operations []core.RolloutOperation, phase core.CredentialsRotationPhase) bool {
+	return slices.ContainsFunc(operations, func(o core.RolloutOperation) bool {
+		return o.Phase == phase
+	})
+}
+
 // ShouldETCDEncryptionKeyRotationBeAutoCompleteAfterPrepared returns whether the current ETCD encryption key rotation should
 // be auto completed after the preparation phase has finished.
 //

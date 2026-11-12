@@ -721,6 +721,16 @@ func (r *Reconciler) updateShootStatusOperationStart(
 		case v1beta1constants.OperationRotateETCDEncryptionKeyComplete:
 			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
 			completeRotationETCDEncryptionKey(shoot, &now)
+
+		case v1beta1constants.OperationMigrateCNIStart:
+			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
+			startRolloutOperation(shoot, v1beta1constants.OperationMigrateCNI, &now)
+		case v1beta1constants.OperationMigrateCNIStartWithoutWorkersRollout:
+			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
+			startRolloutOperationWithoutWorkersRollout(shoot, v1beta1constants.OperationMigrateCNI, &now)
+		case v1beta1constants.OperationMigrateCNIComplete:
+			updatedOperations = v1beta1helper.RemoveOperation(updatedOperations, operation)
+			completeRolloutOperation(shoot, v1beta1constants.OperationMigrateCNI, &now)
 		}
 
 		if strings.HasPrefix(operation, v1beta1constants.OperationRotateRolloutWorkers) {
@@ -741,6 +751,16 @@ func (r *Reconciler) updateShootStatusOperationStart(
 						return poolNames.Has(rollout.Name)
 					})
 				})
+			}
+
+			for _, rolloutOperation := range shoot.Status.RolloutOperations {
+				if rolloutOperation.Phase == gardencorev1beta1.RotationWaitingForWorkersRollout {
+					v1beta1helper.MutateShootRolloutOperation(shoot, rolloutOperation.Name, func(operation *gardencorev1beta1.RolloutOperation) {
+						operation.PendingWorkersRollouts = slices.DeleteFunc(operation.PendingWorkersRollouts, func(rollout gardencorev1beta1.PendingWorkersRollout) bool {
+							return poolNames.Has(rollout.Name)
+						})
+					})
+				}
 			}
 		}
 		if strings.HasPrefix(operation, v1beta1constants.OperationRolloutWorkers) {
@@ -1026,6 +1046,39 @@ func (r *Reconciler) patchShootStatusOperationSuccess(
 	if shoot.Status.Credentials != nil && shoot.Status.Credentials.Rotation != nil {
 		if !v1beta1helper.ShootEnablesSSHAccess(shoot) {
 			shoot.Status.Credentials.Rotation.SSHKeypair = nil
+		}
+	}
+
+	for _, rolloutOperation := range shoot.Status.RolloutOperations {
+		switch rolloutOperation.Phase {
+		case gardencorev1beta1.RotationPreparing:
+			if !manualInPlacePendingWorkersPresent(shoot.Status.InPlaceUpdates) {
+				v1beta1helper.MutateShootRolloutOperation(shoot, rolloutOperation.Name, func(rotation *gardencorev1beta1.RolloutOperation) {
+					rotation.Phase = gardencorev1beta1.RotationPrepared
+					rotation.LastInitiationFinishedTime = &now
+				})
+			}
+
+		case gardencorev1beta1.RotationPreparingWithoutWorkersRollout:
+			v1beta1helper.MutateShootRolloutOperation(shoot, rolloutOperation.Name, func(rotation *gardencorev1beta1.RolloutOperation) {
+				rotation.Phase = gardencorev1beta1.RotationWaitingForWorkersRollout
+			})
+
+		case gardencorev1beta1.RotationWaitingForWorkersRollout:
+			if len(rolloutOperation.PendingWorkersRollouts) == 0 && !manualInPlacePendingWorkersPresent(shoot.Status.InPlaceUpdates) {
+				v1beta1helper.MutateShootRolloutOperation(shoot, rolloutOperation.Name, func(rotation *gardencorev1beta1.RolloutOperation) {
+					rotation.Phase = gardencorev1beta1.RotationPrepared
+					rotation.LastInitiationFinishedTime = &now
+				})
+			}
+
+		case gardencorev1beta1.RotationCompleting:
+			v1beta1helper.MutateShootRolloutOperation(shoot, rolloutOperation.Name, func(rotation *gardencorev1beta1.RolloutOperation) {
+				rotation.Phase = gardencorev1beta1.RotationCompleted
+				rotation.LastCompletionTime = &now
+				rotation.LastInitiationFinishedTime = nil
+				rotation.LastCompletionTriggeredTime = nil
+			})
 		}
 	}
 
@@ -1340,6 +1393,35 @@ func startRotationSSHKeypair(shoot *gardencorev1beta1.Shoot, now *metav1.Time) {
 func startRotationObservability(shoot *gardencorev1beta1.Shoot, now *metav1.Time) {
 	v1beta1helper.MutateObservabilityRotation(shoot, func(rotation *gardencorev1beta1.ObservabilityRotation) {
 		rotation.LastInitiationTime = now
+	})
+}
+
+func startRolloutOperation(shoot *gardencorev1beta1.Shoot, name string, now *metav1.Time) {
+	v1beta1helper.MutateShootRolloutOperation(shoot, name, func(operation *gardencorev1beta1.RolloutOperation) {
+		operation.Phase = gardencorev1beta1.RotationPreparing
+		operation.LastInitiationTime = now
+	})
+}
+
+func startRolloutOperationWithoutWorkersRollout(shoot *gardencorev1beta1.Shoot, name string, now *metav1.Time) {
+	v1beta1helper.MutateShootRolloutOperation(shoot, name, func(operation *gardencorev1beta1.RolloutOperation) {
+		var pendingWorkersRollouts []gardencorev1beta1.PendingWorkersRollout
+		for _, worker := range shoot.Spec.Provider.Workers {
+			pendingWorkersRollouts = append(pendingWorkersRollouts, gardencorev1beta1.PendingWorkersRollout{
+				Name:               worker.Name,
+				LastInitiationTime: operation.LastInitiationTime,
+			})
+		}
+		operation.PendingWorkersRollouts = pendingWorkersRollouts
+
+		operation.Phase = gardencorev1beta1.RotationPreparingWithoutWorkersRollout
+		operation.LastInitiationTime = now
+	})
+}
+
+func completeRolloutOperation(shoot *gardencorev1beta1.Shoot, name string, now *metav1.Time) {
+	v1beta1helper.MutateShootRolloutOperation(shoot, name, func(operation *gardencorev1beta1.RolloutOperation) {
+		operation.Phase = gardencorev1beta1.RotationCompleting
 	})
 }
 

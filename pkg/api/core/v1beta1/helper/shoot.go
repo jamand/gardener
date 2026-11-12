@@ -272,6 +272,40 @@ func GetShootETCDEncryptionKeyRotationPhase(credentials *gardencorev1beta1.Shoot
 	return ""
 }
 
+// GetShootRolloutOperationPhase returns the specified shoot CA rotation phase or an empty string
+func GetShootRolloutOperationPhase(operations []gardencorev1beta1.RolloutOperation, name string) gardencorev1beta1.CredentialsRotationPhase {
+	i := slices.IndexFunc(operations, func(o gardencorev1beta1.RolloutOperation) bool {
+		return o.Name == name
+	})
+	if i == -1 {
+		return ""
+	}
+	return operations[i].Phase
+}
+
+// MutateShootRolloutOperation mutates the .status.credentials.rotation.certificateAuthorities field based on the provided
+// mutation function. If the field is nil then it is initialized.
+func MutateShootRolloutOperation(shoot *gardencorev1beta1.Shoot, name string, f func(*gardencorev1beta1.RolloutOperation)) {
+	if f == nil {
+		return
+	}
+
+	var rolloutOperation *gardencorev1beta1.RolloutOperation
+	i := slices.IndexFunc(shoot.Status.RolloutOperations, func(o gardencorev1beta1.RolloutOperation) bool {
+		return o.Name == name
+	})
+	if i == -1 {
+		shoot.Status.RolloutOperations = append(shoot.Status.RolloutOperations, gardencorev1beta1.RolloutOperation{
+			Name: name,
+		})
+		rolloutOperation = &shoot.Status.RolloutOperations[len(shoot.Status.RolloutOperations)-1]
+	} else {
+		rolloutOperation = &shoot.Status.RolloutOperations[i]
+	}
+
+	f(rolloutOperation)
+}
+
 // MutateShootWorkerPoolRollout mutates the .status.manualWorkerPoolRollout field based on the provided mutation function.
 // If any field is nil, it gets initialized.
 func MutateShootWorkerPoolRollout(shoot *gardencorev1beta1.Shoot, f func(*gardencorev1beta1.ManualWorkerPoolRollout)) {

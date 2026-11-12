@@ -85,6 +85,8 @@ var (
 		v1beta1constants.OperationRotateCAComplete,
 		v1beta1constants.OperationRotateObservabilityCredentials,
 		v1beta1constants.ShootOperationRotateSSHKeypair,
+		v1beta1constants.OperationMigrateCNIStart,
+		v1beta1constants.OperationMigrateCNIStartWithoutWorkersRollout,
 		v1beta1constants.OperationRotateRolloutWorkers,
 		v1beta1constants.OperationRolloutWorkers,
 	).Union(forbiddenShootOperationsWhenHibernated)
@@ -131,6 +133,9 @@ var (
 		},
 		v1beta1constants.OperationRotateETCDEncryptionKey: {
 			v1beta1constants.OperationRotateETCDEncryptionKeyStart,
+		},
+		v1beta1constants.OperationMigrateCNIStart: {
+			v1beta1constants.OperationMigrateCNIStartWithoutWorkersRollout,
 		},
 	}
 	availableShootPurposes = sets.New(
@@ -3562,11 +3567,25 @@ func validateShootOperationContext(operation string, shoot *core.Shoot, fldPath 
 		if helper.GetShootETCDEncryptionKeyRotationPhase(shoot.Status.Credentials) != core.RotationPrepared {
 			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot complete ETCD encryption key rotation if .status.credentials.rotation.etcdEncryptionKey.phase is not 'Prepared'"))
 		}
+
+	case v1beta1constants.OperationMigrateCNIStart, v1beta1constants.OperationMigrateCNIStartWithoutWorkersRollout:
+		if !isShootReadyForRotationStart(shoot.Status.LastOperation) {
+			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot start CNI migration if shoot was not yet created successfully or is not ready for reconciliation"))
+		}
+		if phase := helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI); len(phase) > 0 && phase != core.RotationCompleted {
+			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot start CNI migration if .status.credentials.rotation.certificateAuthorities.phase is not 'Completed'"))
+		}
+		allErrs = append(allErrs, validatePendingWorkerUpdates(shoot, fldPath, "CNI migration")...)
+
+	case v1beta1constants.OperationMigrateCNIComplete:
+		if helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) != core.RotationPrepared {
+			allErrs = append(allErrs, field.Forbidden(fldPath, "cannot complete CNI migration if .status.credentials.rotation.certificateAuthorities.phase is not 'Prepared'"))
+		}
 	}
 
 	if strings.HasPrefix(operation, v1beta1constants.OperationRotateRolloutWorkers) {
-		if caPhase, serviceAccountKeyPhase := helper.GetShootCARotationPhase(shoot.Status.Credentials), helper.GetShootServiceAccountKeyRotationPhase(shoot.Status.Credentials); caPhase != core.RotationWaitingForWorkersRollout && serviceAccountKeyPhase != core.RotationWaitingForWorkersRollout {
-			allErrs = append(allErrs, field.Forbidden(fldPath, "either .status.credentials.rotation.certificateAuthorities.phase or .status.credentials.rotation.serviceAccountKey.phase must be in 'WaitingForWorkersRollout' in order to trigger workers rollout"))
+		if caPhase, serviceAccountKeyPhase := helper.GetShootCARotationPhase(shoot.Status.Credentials), helper.GetShootServiceAccountKeyRotationPhase(shoot.Status.Credentials); caPhase != core.RotationWaitingForWorkersRollout && serviceAccountKeyPhase != core.RotationWaitingForWorkersRollout && !helper.HasShootRolloutOperationInPhase(shoot.Status.RolloutOperations, core.RotationWaitingForWorkersRollout) {
+			allErrs = append(allErrs, field.Forbidden(fldPath, "either .status.credentials.rotation.certificateAuthorities.phase, .status.credentials.rotation.serviceAccountKey.phase, or .status.rolloutOperations[].phase must be in 'WaitingForWorkersRollout' in order to trigger workers rollout"))
 		}
 
 		poolNames := strings.Split(strings.TrimPrefix(operation, v1beta1constants.OperationRotateRolloutWorkers+"="), ",")
