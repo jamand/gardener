@@ -182,7 +182,7 @@ var _ = Describe("OperatingSystemConfig", func() {
 					caBundle = fmt.Sprintf("%s\n%s", caBundle, *worker.CABundle)
 				}
 
-				key := Key(k8sVersion, values.CredentialsRotationStatus, &worker, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				key := Key(k8sVersion, values.ShootStatus, &worker, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				if inPlaceUpdate {
 					key = fmt.Sprintf("gardener-node-agent-%s", worker.Name)
 				}
@@ -550,7 +550,7 @@ var _ = Describe("OperatingSystemConfig", func() {
 				Expect(defaultDepWaiter.Deploy(ctx)).To(Succeed())
 
 				k8sVersion := semver.MustParse(*workers[1].Kubernetes.Version)
-				key := Key(k8sVersion, values.CredentialsRotationStatus, &workers[1], values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				key := Key(k8sVersion, values.ShootStatus, &workers[1], values.NodeLocalDNSEnabled, kubeletConfig, nil)
 
 				for _, suffix := range []string{"-init", "-original"} {
 					osc := &extensionsv1alpha1.OperatingSystemConfig{}
@@ -595,22 +595,26 @@ var _ = Describe("OperatingSystemConfig", func() {
 							OpenTelemetryCollectorLogShipperEnabled: openTelemetryCollectorLogShipperEnabled,
 							Sysctls:                                 globalSysctls,
 						},
-						CredentialsRotationStatus: &gardencorev1beta1.ShootCredentialsRotation{
-							CertificateAuthorities: &gardencorev1beta1.CARotation{
-								LastInitiationTime: globalLastInitiationTime,
-								PendingWorkersRollouts: []gardencorev1beta1.PendingWorkersRollout{
-									{
-										Name:               inPlaceWorkerName1,
-										LastInitiationTime: &metav1.Time{Time: time.Date(2020, 12, 2, 1, 0, 0, 0, time.UTC)},
+						ShootStatus: gardencorev1beta1.ShootStatus{
+							Credentials: &gardencorev1beta1.ShootCredentials{
+								Rotation: &gardencorev1beta1.ShootCredentialsRotation{
+									CertificateAuthorities: &gardencorev1beta1.CARotation{
+										LastInitiationTime: globalLastInitiationTime,
+										PendingWorkersRollouts: []gardencorev1beta1.PendingWorkersRollout{
+											{
+												Name:               inPlaceWorkerName1,
+												LastInitiationTime: &metav1.Time{Time: time.Date(2020, 12, 2, 1, 0, 0, 0, time.UTC)},
+											},
+										},
 									},
-								},
-							},
-							ServiceAccountKey: &gardencorev1beta1.ServiceAccountKeyRotation{
-								LastInitiationTime: globalLastInitiationTime,
-								PendingWorkersRollouts: []gardencorev1beta1.PendingWorkersRollout{
-									{
-										Name:               inPlaceWorkerName2,
-										LastInitiationTime: &metav1.Time{Time: time.Date(2020, 12, 2, 2, 0, 0, 0, time.UTC)},
+									ServiceAccountKey: &gardencorev1beta1.ServiceAccountKeyRotation{
+										LastInitiationTime: globalLastInitiationTime,
+										PendingWorkersRollouts: []gardencorev1beta1.PendingWorkersRollout{
+											{
+												Name:               inPlaceWorkerName2,
+												LastInitiationTime: &metav1.Time{Time: time.Date(2020, 12, 2, 2, 0, 0, 0, time.UTC)},
+											},
+										},
 									},
 								},
 							},
@@ -756,7 +760,7 @@ var _ = Describe("OperatingSystemConfig", func() {
 					if worker.Kubernetes != nil && worker.Kubernetes.Version != nil {
 						k8sVersion = semver.MustParse(*worker.Kubernetes.Version)
 					}
-					key := Key(k8sVersion, values.CredentialsRotationStatus, &worker, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+					key := Key(k8sVersion, values.ShootStatus, &worker, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 
 					extensions = append(extensions,
 						gardencorev1beta1.ExtensionResourceState{
@@ -1274,12 +1278,16 @@ var _ = Describe("OperatingSystemConfig", func() {
 			}
 			kubernetesVersion = semver.MustParse("1.2.3")
 			values = &Values{
-				CredentialsRotationStatus: &gardencorev1beta1.ShootCredentialsRotation{
-					CertificateAuthorities: &gardencorev1beta1.CARotation{
-						LastInitiationTime: &lastCARotationInitiation,
-					},
-					ServiceAccountKey: &gardencorev1beta1.ServiceAccountKeyRotation{
-						LastInitiationTime: &lastSAKeyRotationInitiation,
+				ShootStatus: gardencorev1beta1.ShootStatus{
+					Credentials: &gardencorev1beta1.ShootCredentials{
+						Rotation: &gardencorev1beta1.ShootCredentialsRotation{
+							CertificateAuthorities: &gardencorev1beta1.CARotation{
+								LastInitiationTime: &lastCARotationInitiation,
+							},
+							ServiceAccountKey: &gardencorev1beta1.ServiceAccountKeyRotation{
+								LastInitiationTime: &lastSAKeyRotationInitiation,
+							},
+						},
 					},
 				},
 				OriginalValues: OriginalValues{
@@ -1304,12 +1312,12 @@ var _ = Describe("OperatingSystemConfig", func() {
 				Enabled: new(false),
 			}
 
-			hash = Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
+			hash = Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
 		})
 
 		It("should handle an empty machine image version", func() {
 			p.Machine.Image.Version = nil
-			Expect(Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)).NotTo(BeEmpty())
+			Expect(Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)).NotTo(BeEmpty())
 		})
 
 		Context("hash value should not change", func() {
@@ -1318,7 +1326,7 @@ var _ = Describe("OperatingSystemConfig", func() {
 					Mode:    new(gardencorev1beta1.ProxyModeIPTables),
 					Enabled: new(false),
 				}
-				actual := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
+				actual := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
 				Expect(actual).To(Equal(hash))
 			})
 
@@ -1381,8 +1389,8 @@ var _ = Describe("OperatingSystemConfig", func() {
 
 			It("when a shoot CA rotation is triggered", func() {
 				newRotationTime := metav1.Time{Time: lastCARotationInitiation.Add(time.Hour)}
-				values.CredentialsRotationStatus.CertificateAuthorities.LastInitiationTime = &newRotationTime
-				values.CredentialsRotationStatus.CertificateAuthorities.PendingWorkersRollouts = []gardencorev1beta1.PendingWorkersRollout{{
+				values.ShootStatus.Credentials.Rotation.CertificateAuthorities.LastInitiationTime = &newRotationTime
+				values.ShootStatus.Credentials.Rotation.CertificateAuthorities.PendingWorkersRollouts = []gardencorev1beta1.PendingWorkersRollout{{
 					Name:               p.Name,
 					LastInitiationTime: &lastCARotationInitiation,
 				}}
@@ -1390,8 +1398,8 @@ var _ = Describe("OperatingSystemConfig", func() {
 
 			It("when a shoot service account key rotation is triggered", func() {
 				newRotationTime := metav1.Time{Time: lastSAKeyRotationInitiation.Add(time.Hour)}
-				values.CredentialsRotationStatus.ServiceAccountKey.LastInitiationTime = &newRotationTime
-				values.CredentialsRotationStatus.ServiceAccountKey.PendingWorkersRollouts = []gardencorev1beta1.PendingWorkersRollout{{
+				values.ShootStatus.Credentials.Rotation.ServiceAccountKey.LastInitiationTime = &newRotationTime
+				values.ShootStatus.Credentials.Rotation.ServiceAccountKey.PendingWorkersRollouts = []gardencorev1beta1.PendingWorkersRollout{{
 					Name:               p.Name,
 					LastInitiationTime: &lastSAKeyRotationInitiation,
 				}}
@@ -1400,7 +1408,7 @@ var _ = Describe("OperatingSystemConfig", func() {
 
 		Context("hash value should change", func() {
 			AfterEach(func() {
-				actual := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				actual := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				Expect(actual).NotTo(Equal(hash))
 			})
 
@@ -1439,28 +1447,28 @@ var _ = Describe("OperatingSystemConfig", func() {
 
 			It("when a shoot CA rotation is triggered", func() {
 				newRotationTime := metav1.Time{Time: lastCARotationInitiation.Add(time.Hour)}
-				values.CredentialsRotationStatus.CertificateAuthorities.LastInitiationTime = &newRotationTime
+				values.ShootStatus.Credentials.Rotation.CertificateAuthorities.LastInitiationTime = &newRotationTime
 			})
 
 			It("when a shoot CA rotation is triggered for the first time (lastInitiationTime was nil)", func() {
-				credentialStatusWithInitiatedRotation := values.CredentialsRotationStatus.CertificateAuthorities.DeepCopy()
-				values.CredentialsRotationStatus.CertificateAuthorities = nil
-				hash = Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				credentialStatusWithInitiatedRotation := values.ShootStatus.Credentials.Rotation.CertificateAuthorities.DeepCopy()
+				values.ShootStatus.Credentials.Rotation.CertificateAuthorities = nil
+				hash = Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 
-				values.CredentialsRotationStatus.CertificateAuthorities = credentialStatusWithInitiatedRotation
+				values.ShootStatus.Credentials.Rotation.CertificateAuthorities = credentialStatusWithInitiatedRotation
 			})
 
 			It("when a shoot service account key rotation is triggered", func() {
 				newRotationTime := metav1.Time{Time: lastSAKeyRotationInitiation.Add(time.Hour)}
-				values.CredentialsRotationStatus.ServiceAccountKey.LastInitiationTime = &newRotationTime
+				values.ShootStatus.Credentials.Rotation.ServiceAccountKey.LastInitiationTime = &newRotationTime
 			})
 
 			It("when a shoot service account key rotation is triggered for the first time (lastInitiationTime was nil)", func() {
-				credentialStatusWithInitiatedRotation := values.CredentialsRotationStatus.ServiceAccountKey.DeepCopy()
-				values.CredentialsRotationStatus.ServiceAccountKey = nil
-				hash = Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				credentialStatusWithInitiatedRotation := values.ShootStatus.Credentials.Rotation.ServiceAccountKey.DeepCopy()
+				values.ShootStatus.Credentials.Rotation.ServiceAccountKey = nil
+				hash = Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 
-				values.CredentialsRotationStatus.ServiceAccountKey = credentialStatusWithInitiatedRotation
+				values.ShootStatus.Credentials.Rotation.ServiceAccountKey = credentialStatusWithInitiatedRotation
 			})
 
 			It("when enabling node local dns via specification", func() {
@@ -1510,9 +1518,9 @@ var _ = Describe("OperatingSystemConfig", func() {
 			It("when node-local-dns gets enabled and kubernetes version is equal or larger than 1.34", func() {
 				values.NodeLocalDNSEnabled = false
 				kubernetesVersion = semver.MustParse("1.34")
-				hash1 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				hash1 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				values.NodeLocalDNSEnabled = true
-				hash2 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				hash2 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				Expect(hash1).To(Equal(hash2))
 			})
 
@@ -1523,18 +1531,18 @@ var _ = Describe("OperatingSystemConfig", func() {
 					Mode:    new(gardencorev1beta1.ProxyModeIPVS),
 					Enabled: new(true),
 				}
-				hash1 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
+				hash1 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
 				values.NodeLocalDNSEnabled = false
-				hash2 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
+				hash2 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, kubeProxyConfig)
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
 			It("when node-local-dns gets enabled and kubernetes version is lower than 1.34", func() {
 				values.NodeLocalDNSEnabled = false
 				kubernetesVersion = semver.MustParse("1.31")
-				hash1 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				hash1 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				values.NodeLocalDNSEnabled = true
-				hash2 := Key(kubernetesVersion, values.CredentialsRotationStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
+				hash2 := Key(kubernetesVersion, values.ShootStatus, p, values.NodeLocalDNSEnabled, kubeletConfig, nil)
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 		})

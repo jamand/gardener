@@ -839,7 +839,7 @@ func (r *Reconciler) updateShootStatusOperationStart(
 		shoot.Status.Networking.Type = shoot.Spec.Networking.Type
 	}
 	if !equality.Semantic.DeepEqual(shoot.Spec.Networking.Type, shoot.Status.Networking.Type) &&
-		v1beta1helper.GetShootCARotationPhase(shoot.Status.Credentials) == gardencorev1beta1.RotationCompleting {
+		v1beta1helper.GetShootRolloutOperationPhase(shoot.Status.RolloutOperations, v1beta1constants.OperationMigrateCNI) == gardencorev1beta1.RotationCompleting {
 		shoot.Status.Networking.Type = shoot.Spec.Networking.Type
 	}
 

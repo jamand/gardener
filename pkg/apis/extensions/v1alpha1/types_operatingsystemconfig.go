@@ -381,6 +381,7 @@ type InPlaceUpdates struct {
 	// CredentialsRotation is a structure containing information about the last initiation time of the certificate authority and service account key rotation.
 	// +optional
 	CredentialsRotation *CredentialsRotation `json:"credentialsRotation,omitempty"`
+	// TODO: add rollout operations here
 }
 
 // InPlaceUpdatesStatus is a structure containing configuration for in-place updates.

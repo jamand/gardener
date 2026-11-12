@@ -148,18 +148,6 @@ func (mr *MockInterfaceMockRecorder) SetClusterDNSAddresses(arg0 any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetClusterDNSAddresses", reflect.TypeOf((*MockInterface)(nil).SetClusterDNSAddresses), arg0)
 }
 
-// SetCredentialsRotationStatus mocks base method.
-func (m *MockInterface) SetCredentialsRotationStatus(arg0 *v1beta1.ShootCredentialsRotation) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetCredentialsRotationStatus", arg0)
-}
-
-// SetCredentialsRotationStatus indicates an expected call of SetCredentialsRotationStatus.
-func (mr *MockInterfaceMockRecorder) SetCredentialsRotationStatus(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCredentialsRotationStatus", reflect.TypeOf((*MockInterface)(nil).SetCredentialsRotationStatus), arg0)
-}
-
 // SetSSHPublicKeys mocks base method.
 func (m *MockInterface) SetSSHPublicKeys(arg0 []string) {
 	m.ctrl.T.Helper()
@@ -170,6 +158,18 @@ func (m *MockInterface) SetSSHPublicKeys(arg0 []string) {
 func (mr *MockInterfaceMockRecorder) SetSSHPublicKeys(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSSHPublicKeys", reflect.TypeOf((*MockInterface)(nil).SetSSHPublicKeys), arg0)
+}
+
+// SetShootStatus mocks base method.
+func (m *MockInterface) SetShootStatus(status v1beta1.ShootStatus) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetShootStatus", status)
+}
+
+// SetShootStatus indicates an expected call of SetShootStatus.
+func (mr *MockInterfaceMockRecorder) SetShootStatus(status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShootStatus", reflect.TypeOf((*MockInterface)(nil).SetShootStatus), status)
 }
 
 // SetSyncControlPlaneAuthTokens mocks base method.

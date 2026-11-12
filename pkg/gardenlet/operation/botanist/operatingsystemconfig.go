@@ -143,7 +143,7 @@ func (b *Botanist) deployOperatingSystemConfig(ctx context.Context, apiServerAdd
 
 	shoot := b.Shoot.GetInfo()
 	if shoot.Status.Credentials != nil {
-		b.Shoot.Components.Extensions.OperatingSystemConfig.SetCredentialsRotationStatus(shoot.Status.Credentials.Rotation)
+		b.Shoot.Components.Extensions.OperatingSystemConfig.SetShootStatus(shoot.Status)
 	}
 
 	if v1beta1helper.ShootEnablesSSHAccess(b.Shoot.GetInfo()) {

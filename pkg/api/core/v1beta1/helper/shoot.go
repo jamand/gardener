@@ -272,6 +272,17 @@ func GetShootETCDEncryptionKeyRotationPhase(credentials *gardencorev1beta1.Shoot
 	return ""
 }
 
+// GetShootRolloutOperation returns the specified shoot CA rotation phase or an empty string
+func GetShootRolloutOperation(operations []gardencorev1beta1.RolloutOperation, name string) *gardencorev1beta1.RolloutOperation {
+	i := slices.IndexFunc(operations, func(o gardencorev1beta1.RolloutOperation) bool {
+		return o.Name == name
+	})
+	if i == -1 {
+		return nil
+	}
+	return &operations[i]
+}
+
 // GetShootRolloutOperationPhase returns the specified shoot CA rotation phase or an empty string
 func GetShootRolloutOperationPhase(operations []gardencorev1beta1.RolloutOperation, name string) gardencorev1beta1.CredentialsRotationPhase {
 	i := slices.IndexFunc(operations, func(o gardencorev1beta1.RolloutOperation) bool {
@@ -1001,4 +1012,16 @@ func RemoveOperation(operations []string, operationsToRemove ...string) []string
 	return slices.DeleteFunc(operations, func(operation string) bool {
 		return slices.Contains(operationsToRemove, operation)
 	})
+}
+
+// GetNetworkingTypeForWorkerPool returns the active networking type for the given worker pool
+func GetNetworkingTypeForWorkerPool(worker string, globalNetworkingType string, shootStatus gardencorev1beta1.ShootStatus) string {
+	if cniMigration := GetShootRolloutOperation(shootStatus.RolloutOperations, v1beta1constants.OperationMigrateCNI); cniMigration != nil {
+		if slices.ContainsFunc(cniMigration.PendingWorkersRollouts, func(rollout gardencorev1beta1.PendingWorkersRollout) bool {
+			return rollout.Name == worker
+		}) && shootStatus.Networking != nil && shootStatus.Networking.Type != nil {
+			return *shootStatus.Networking.Type
+		}
+	}
+	return globalNetworkingType
 }

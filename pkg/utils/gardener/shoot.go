@@ -1008,6 +1008,7 @@ func CalculateWorkerPoolHashForInPlaceUpdate(workerPoolName string, kubernetesVe
 			}
 		}
 	}
+	// TODO: add rollout operations here
 
 	data = append(data, CalculateDataStringForKubeletConfiguration(kubeletConfig)...)
 

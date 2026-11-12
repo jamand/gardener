@@ -72,8 +72,8 @@ type Interface interface {
 	SetAPIServerURL(string)
 	// SetCABundle sets the CABundle value.
 	SetCABundle(string)
-	// SetCredentialsRotationStatus sets the credentials rotation status
-	SetCredentialsRotationStatus(*gardencorev1beta1.ShootCredentialsRotation)
+	// SetShootStatus sets the shoot status for reading the credentials rotation and rollout operations status
+	SetShootStatus(status gardencorev1beta1.ShootStatus)
 	// SetSSHPublicKeys sets the SSHPublicKeys value.
 	SetSSHPublicKeys([]string)
 	// WorkerPoolNameToOperatingSystemConfigsMap returns a map whose key is a worker pool name and whose value is a structure
@@ -98,8 +98,8 @@ type Values struct {
 	KubernetesVersion *semver.Version
 	// Workers is the list of worker pools.
 	Workers []gardencorev1beta1.Worker
-	// CredentialsRotationStatus
-	CredentialsRotationStatus *gardencorev1beta1.ShootCredentialsRotation
+	// ShootStatus
+	ShootStatus gardencorev1beta1.ShootStatus
 }
 
 // InitValues are configuration values required for the 'provision' OperatingSystemConfigPurpose.
@@ -503,8 +503,8 @@ func (o *operatingSystemConfig) SetCABundle(val string) {
 	o.values.CABundle = val
 }
 
-func (o *operatingSystemConfig) SetCredentialsRotationStatus(status *gardencorev1beta1.ShootCredentialsRotation) {
-	o.values.CredentialsRotationStatus = status
+func (o *operatingSystemConfig) SetShootStatus(status gardencorev1beta1.ShootStatus) {
+	o.values.ShootStatus = status
 }
 
 // SetSSHPublicKeys sets the SSHPublicKeys value.
@@ -581,7 +581,7 @@ func (o *operatingSystemConfig) newDeployer(osc *extensionsv1alpha1.OperatingSys
 
 	var caRotationLastInitiationTime, serviceAccountKeyRotationLastInitiationTime *metav1.Time
 
-	if credentialsRotation := o.values.CredentialsRotationStatus; credentialsRotation != nil {
+	if credentialsRotation := o.values.ShootStatus.Credentials.Rotation; credentialsRotation != nil {
 		if caRotation := credentialsRotation.CertificateAuthorities; caRotation != nil {
 			caRotationLastInitiationTime = v1beta1helper.LastInitiationTimeForWorkerPool(worker.Name, caRotation.PendingWorkersRollouts, caRotation.LastInitiationTime)
 		}
@@ -590,6 +590,7 @@ func (o *operatingSystemConfig) newDeployer(osc *extensionsv1alpha1.OperatingSys
 			serviceAccountKeyRotationLastInitiationTime = v1beta1helper.LastInitiationTimeForWorkerPool(worker.Name, serviceAccountKeyRotation.PendingWorkersRollouts, serviceAccountKeyRotation.LastInitiationTime)
 		}
 	}
+	// TODO: add rollout operations here to support in-place updates
 
 	taints := slices.Clone(worker.Taints)
 	if key := "node-role.kubernetes.io/control-plane"; worker.ControlPlane != nil && !slices.ContainsFunc(taints, func(taint corev1.Taint) bool {
@@ -629,7 +630,7 @@ func (o *operatingSystemConfig) newDeployer(osc *extensionsv1alpha1.OperatingSys
 		openTelemetryCollectorLogShipperEnabled: o.values.OpenTelemetryCollectorLogShipperEnabled,
 		nodeMonitorGracePeriod:                  o.values.NodeMonitorGracePeriod,
 		nodeLocalDNSEnabled:                     o.values.NodeLocalDNSEnabled,
-		networkingType:                          o.values.NetworkingType,
+		networkingType:                          v1beta1helper.GetNetworkingTypeForWorkerPool(worker.Name, o.values.NetworkingType, o.values.ShootStatus),
 		primaryIPFamily:                         o.values.PrimaryIPFamily,
 		taints:                                  taints,
 		caRotationLastInitiationTime:            caRotationLastInitiationTime,
@@ -869,7 +870,7 @@ func calculateKeyForValues(values *Values, worker *gardencorev1beta1.Worker) (st
 		kubeProxyConfig = values.KubeProxyConfig
 	}
 
-	return Key(kubernetesVersion, values.CredentialsRotationStatus, worker, values.NodeLocalDNSEnabled, kubeletConfiguration, kubeProxyConfig), nil
+	return Key(kubernetesVersion, values.ShootStatus, worker, values.NodeLocalDNSEnabled, kubeletConfiguration, kubeProxyConfig), nil
 }
 
 // Key returns the key that can be used as secret name based on the provided worker name,
@@ -877,7 +878,7 @@ func calculateKeyForValues(values *Values, worker *gardencorev1beta1.Worker) (st
 // and kubelet configuration.
 func Key(
 	kubernetesVersion *semver.Version,
-	credentialsRotation *gardencorev1beta1.ShootCredentialsRotation,
+	shootStatus gardencorev1beta1.ShootStatus,
 	worker *gardencorev1beta1.Worker,
 	nodeLocalDNSEnabled bool,
 	kubeletConfiguration *gardencorev1beta1.KubeletConfig,
@@ -908,7 +909,7 @@ func Key(
 		data = append(data, string(worker.CRI.Name))
 	}
 
-	if credentialsRotation != nil {
+	if credentialsRotation := shootStatus.Credentials.Rotation; credentialsRotation != nil {
 		if credentialsRotation.CertificateAuthorities != nil {
 			if lastInitiationTime := v1beta1helper.LastInitiationTimeForWorkerPool(worker.Name, credentialsRotation.CertificateAuthorities.PendingWorkersRollouts, credentialsRotation.CertificateAuthorities.LastInitiationTime); lastInitiationTime != nil {
 				data = append(data, lastInitiationTime.String())
@@ -918,6 +919,11 @@ func Key(
 			if lastInitiationTime := v1beta1helper.LastInitiationTimeForWorkerPool(worker.Name, credentialsRotation.ServiceAccountKey.PendingWorkersRollouts, credentialsRotation.ServiceAccountKey.LastInitiationTime); lastInitiationTime != nil {
 				data = append(data, lastInitiationTime.String())
 			}
+		}
+	}
+	for _, rolloutOperation := range shootStatus.RolloutOperations {
+		if lastInitiationTime := v1beta1helper.LastInitiationTimeForWorkerPool(worker.Name, rolloutOperation.PendingWorkersRollouts, rolloutOperation.LastInitiationTime); lastInitiationTime != nil {
+			data = append(data, lastInitiationTime.String())
 		}
 	}
 
